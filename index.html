@@ -381,32 +381,34 @@
                 </div>
               </div>
 
-              <!-- Interactive Timeline Canvas & Tracks -->
+              <!-- Interactive Timeline Canvas & Tracks (Aligned Multi-Track Architecture) -->
               <div class="ve-timeline-viewport" id="ve-timeline-viewport">
-                <!-- Ruler Bar with Time Notches -->
-                <div class="ve-ruler-track" id="ve-ruler-track"></div>
-
-                <!-- Playhead Scrub Line -->
-                <div class="ve-playhead-needle" id="ve-playhead-needle" style="left: 0%;">
-                  <div class="needle-head"></div>
-                  <div class="needle-line"></div>
-                </div>
-
-                <!-- Track 1: Color & Palette Keyframes -->
-                <div class="ve-track-row" id="ve-track-colors">
+                <!-- Left Sticky Labels Column -->
+                <div class="ve-timeline-labels-col">
+                  <div class="ve-track-label ve-label-ruler">⏱️ Tiempo</div>
                   <div class="ve-track-label">🎨 Color</div>
-                  <div class="ve-track-lane" id="ve-lane-colors"></div>
-                </div>
-
-                <!-- Track 2: Kinetic Layout Keyframes -->
-                <div class="ve-track-row" id="ve-track-layout">
                   <div class="ve-track-label">⚡ Layout</div>
-                  <div class="ve-track-lane" id="ve-lane-layout"></div>
+                  <div class="ve-track-label">💥 808</div>
                 </div>
 
-                <!-- Track 3: 808 Bass Hits -->
-                <div class="ve-track-row" id="ve-track-beats">
-                  <div class="ve-track-label">💥 808</div>
+                <!-- Right Tracks Area with Playhead Needle, Ruler & Lanes -->
+                <div class="ve-timeline-lanes-area" id="ve-timeline-lanes-area">
+                  <!-- Playhead Scrub Line spanning from ruler to bottom -->
+                  <div class="ve-playhead-needle" id="ve-playhead-needle" style="left: 0%;">
+                    <div class="needle-head"></div>
+                    <div class="needle-line"></div>
+                  </div>
+
+                  <!-- Ruler Bar with Time Notches -->
+                  <div class="ve-ruler-track" id="ve-ruler-track"></div>
+
+                  <!-- Track 1: Color & Palette Keyframes Lane -->
+                  <div class="ve-track-lane" id="ve-lane-colors"></div>
+
+                  <!-- Track 2: Kinetic Layout Keyframes Lane -->
+                  <div class="ve-track-lane" id="ve-lane-layout"></div>
+
+                  <!-- Track 3: 808 Bass Hits Lane -->
                   <div class="ve-track-lane" id="ve-lane-beats"></div>
                 </div>
               </div>
@@ -514,17 +516,15 @@
                   <span class="badge-fps">AuraMusic Engine 60FPS</span>
                 </div>
 
-                <div class="cinema-live-stage" id="step3-cinema-stage" data-lyrics-theme="brat" data-brat-palette="lime">
-                  <div class="stage-center-box" id="step3-stage-center-box">
-                    <div class="stage-active-line" id="step3-stage-active-line">
-                      <span class="tok active">I</span>
-                      <span class="tok">went</span>
-                      <span class="tok">to</span>
-                      <span class="tok">the</span>
-                      <span class="tok focus">city,</span>
-                      <span class="tok">I'm</span>
-                      <span class="tok">so</span>
-                      <span class="tok impact">JULIA</span>
+                <!-- Authentic AuraMusic Brat Cinema Stage -->
+                <div class="cinema-live-stage cinema-brat-stage" id="step3-cinema-stage" data-lyrics-theme="brat" data-brat-palette="lime" data-layout="impact" data-variant="heavy">
+                  <div class="cinema-brat-noise" id="cinema-brat-noise"></div>
+                  <div class="cinema-brat-center" id="step3-stage-center-box">
+                    <div class="cinema-brat-text" id="step3-stage-brat-text" data-brat-count="0">
+                      <span class="brat-word brat-word--active"><span class="brat-word-ink">TE</span></span>
+                      <span class="brat-word brat-word--active"><span class="brat-word-ink">FUI</span></span>
+                      <span class="brat-word brat-word--active"><span class="brat-word-ink">A</span></span>
+                      <span class="brat-word brat-word--active"><span class="brat-word-ink">SEGUIR</span></span>
                     </div>
                   </div>
                 </div>

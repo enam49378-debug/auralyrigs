@@ -750,6 +750,7 @@
   function renderVideoEditorTimeline() {
     const dur = Math.max(10, state.duration || 133);
     const ruler = document.getElementById('ve-ruler-track');
+    const lanesArea = document.getElementById('ve-timeline-lanes-area');
     const laneColors = document.getElementById('ve-lane-colors');
     const laneLayout = document.getElementById('ve-lane-layout');
     const laneBeats = document.getElementById('ve-lane-beats');
@@ -762,7 +763,7 @@
       playhead.style.left = `${Math.min(100, Math.max(0, pct))}%`;
     }
 
-    // Ruler notches
+    // Ruler notches across full width of lanes
     if (ruler) {
       ruler.innerHTML = '';
       const step = dur > 120 ? 15 : 10;
@@ -776,10 +777,27 @@
       }
     }
 
+    // Click anywhere on timeline tracks area to scrub and seek
+    if (lanesArea && !lanesArea.dataset.clickSeekAttached) {
+      lanesArea.dataset.clickSeekAttached = '1';
+      lanesArea.addEventListener('click', (e) => {
+        // If clicking a diamond, diamond handler stops propagation
+        if (e.target.closest('.ve-kf-diamond')) return;
+        const rect = lanesArea.getBoundingClientRect();
+        if (rect.width <= 0) return;
+        const clickX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+        const pct = clickX / rect.width;
+        const targetTime = pct * (state.duration || 133);
+        seekTo(targetTime);
+        if (playhead) playhead.style.left = `${pct * 100}%`;
+        if (tcDigits) tcDigits.textContent = formatTime(targetTime);
+      });
+    }
+
     // Color Lane Keyframes
     if (laneColors) {
       laneColors.innerHTML = '';
-      const keyframes = state.currentTrack.effects.keyframes || [];
+      const keyframes = state.currentTrack?.effects?.keyframes || [];
 
       keyframes.forEach((kf, idx) => {
         const pct = (kf.time / dur) * 100;
@@ -803,7 +821,7 @@
     // Layout Lane Keyframes
     if (laneLayout) {
       laneLayout.innerHTML = '';
-      const keyframes = state.currentTrack.effects.keyframes || [];
+      const keyframes = state.currentTrack?.effects?.keyframes || [];
 
       keyframes.forEach((kf, idx) => {
         const pct = (kf.time / dur) * 100;
@@ -826,7 +844,7 @@
     // 808 Beats Lane
     if (laneBeats) {
       laneBeats.innerHTML = '';
-      const beats = state.currentTrack.effects.bassBeats || [];
+      const beats = state.currentTrack?.effects?.bassBeats || [];
 
       beats.forEach(b => {
         const pct = (b / dur) * 100;
@@ -1038,17 +1056,21 @@
     }
   }
 
-  function triggerStageBeatHit() {
+  function triggerStageBeatHit(is808 = true) {
     const stage = document.getElementById('step3-cinema-stage');
     if (!stage) return;
 
     stage.setAttribute('data-beat', 'hit');
-    stage.setAttribute('data-beat-intensity', '808');
+    if (is808) {
+      stage.setAttribute('data-beat-intensity', '808');
+      stage.setAttribute('data-flash', 'contrast');
+    }
 
     setTimeout(() => {
       stage.removeAttribute('data-beat');
       stage.removeAttribute('data-beat-intensity');
-    }, 140);
+      stage.removeAttribute('data-flash');
+    }, 180);
   }
 
   function renderBeatMarkersTrack() {
@@ -1164,50 +1186,109 @@
     });
   }
 
+  function fitBratText(fullText, element) {
+    if (!element || !fullText) return;
+    const stage = element.closest('.cinema-brat-stage');
+    const impact = stage?.dataset.layout === 'impact';
+    const maxSize = impact ? Math.max(65, Math.min(220, Math.round((stage?.clientWidth || 800) * 0.16)))
+                           : Math.max(50, Math.min(160, Math.round((stage?.clientWidth || 800) * 0.11)));
+    const minSize = 34;
+    const availableWidth = Math.max(220, (stage?.clientWidth || 800) * 0.92);
+    const availableHeight = Math.max(160, (stage?.clientHeight || 420) * 0.82);
+
+    const measure = element.cloneNode(true);
+    measure.removeAttribute('id');
+    measure.setAttribute('aria-hidden', 'true');
+    measure.style.cssText = `position:absolute;visibility:hidden;pointer-events:none;width:${availableWidth}px;max-height:none;min-height:0;height:auto;overflow:visible;animation:none;transition:none;font-size:${maxSize}px`;
+    document.body.appendChild(measure);
+
+    let size = maxSize;
+    while (size > minSize && (measure.scrollWidth > availableWidth + 4 || measure.scrollHeight > availableHeight + 4)) {
+      size = Math.max(minSize, size - (size > 110 ? 6 : 3));
+      measure.style.fontSize = `${size}px`;
+    }
+    measure.remove();
+    element.style.fontSize = `${size}px`;
+  }
+
+  function renderBratWords(stageText, count, previousCount, allowAnimation = true) {
+    if (!stageText) return;
+    const words = stageText.querySelectorAll('.brat-word');
+    words.forEach((span, i) => {
+      const revealed = i < count;
+      const wasHidden = span.classList.contains('is-hidden');
+      span.classList.toggle('is-hidden', !revealed);
+      if (revealed && wasHidden && allowAnimation && (count - previousCount <= 2)) {
+        span.classList.add('brat-word--new');
+      } else if (!revealed) {
+        span.classList.remove('brat-word--new');
+      }
+      span.classList.toggle('brat-word--active', i === count - 1 || (count > 0 && i < count && i >= count - 2));
+      span.classList.toggle('brat-word--past', i < count - 2);
+    });
+  }
+
+  let lastBratVerseIdx = -1;
+
   function renderCinemaStageActiveLine(activeIdx, curT) {
-    const lineEl = document.getElementById('step3-stage-active-line');
-    if (!lineEl || !state.currentTrack) return;
+    const stageText = document.getElementById('step3-stage-brat-text') || document.getElementById('step3-stage-active-line');
+    if (!stageText || !state.currentTrack) return;
 
     if (activeIdx < 0 || activeIdx >= state.currentTrack.lines.length) {
-      lineEl.innerHTML = `<span class="tok active" style="font-size: 1.5rem; color: rgba(0,0,0,0.5);">AuraLyrics Cinema</span>`;
+      stageText.innerHTML = `<span class="brat-word brat-word--active"><span class="brat-word-ink">AURALYRICS</span></span>`;
+      lastBratVerseIdx = -1;
       return;
     }
 
     const line = state.currentTrack.lines[activeIdx];
     const words = line.words || distributeWordsForLine(line.text, line.time, line.time + 3.5);
 
-    let html = '';
-    words.forEach((w, wIdx) => {
-      const isImpact = (wIdx === words.length - 1 || w.word.length > 5);
-      const isFocus = (wIdx % 3 === 0);
-      const cls = ['tok', isImpact ? 'impact' : '', isFocus ? 'focus' : ''].filter(Boolean).join(' ');
-      html += `<span class="${cls}" data-widx="${wIdx}">${escapeHtml(w.word)}</span> `;
-    });
+    if (activeIdx !== lastBratVerseIdx) {
+      lastBratVerseIdx = activeIdx;
+      stageText.replaceChildren();
 
-    lineEl.innerHTML = html;
+      words.forEach(w => {
+        const span = document.createElement('span');
+        span.className = 'brat-word is-hidden';
+        const ink = document.createElement('span');
+        ink.className = 'brat-word-ink';
+        ink.textContent = w.word;
+        span.appendChild(ink);
+        span.appendChild(document.createTextNode(' '));
+        span.addEventListener('animationend', (e) => {
+          if (e.target === ink) span.classList.remove('brat-word--new');
+        });
+        stageText.appendChild(span);
+      });
+
+      fitBratText(line.text, stageText);
+      stageText.dataset.bratCount = '0';
+    }
+
     updateCinemaStageWordHighlight(activeIdx, curT);
   }
 
   function updateCinemaStageWordHighlight(activeIdx, curT) {
-    const lineEl = document.getElementById('step3-stage-active-line');
-    if (!lineEl || !state.currentTrack || activeIdx < 0) return;
+    const stageText = document.getElementById('step3-stage-brat-text') || document.getElementById('step3-stage-active-line');
+    if (!stageText || !state.currentTrack || activeIdx < 0) return;
 
     const line = state.currentTrack.lines[activeIdx];
     const words = line.words || [];
 
-    const tokenEls = lineEl.querySelectorAll('.tok');
-    tokenEls.forEach((tok, wIdx) => {
-      const w = words[wIdx];
-      if (w) {
-        if (curT >= w.start && curT < w.end) {
-          tok.className = tok.className.replace(/\bactive\b|\bsung\b/g, '') + ' active';
-        } else if (curT >= w.end) {
-          tok.className = tok.className.replace(/\bactive\b/g, '') + ' sung';
-        } else {
-          tok.className = tok.className.replace(/\bactive\b|\bsung\b/g, '');
-        }
+    let count = 0;
+    for (let i = 0; i < words.length; i++) {
+      if (curT >= words[i].start) {
+        count = i + 1;
+      } else {
+        break;
       }
-    });
+    }
+
+    const prevCount = parseInt(stageText.dataset.bratCount || '0', 10);
+    if (count !== prevCount) {
+      stageText.dataset.bratCount = String(count);
+      renderBratWords(stageText, count, prevCount, state.isPlaying);
+    }
   }
 
   function checkAndTriggerBeats(curT) {
