@@ -747,6 +747,45 @@ body.studio-body {
   height: 100% !important;
 }
 
+.yt-player-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  cursor: pointer;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.yt-player-overlay:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.overlay-play-hint {
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(138, 207, 0, 0.9);
+  color: #000;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(138, 207, 0, 0.4);
+}
+
+.yt-player-overlay:hover .overlay-play-hint {
+  opacity: 0.9;
+  transform: scale(1);
+}
+
 /* Transport Dock */
 .transport-dock {
   background: rgba(16, 21, 29, 0.7);
@@ -1706,4 +1745,39 @@ body.studio-body {
   font-size: 0.72rem;
   color: #aaff00;
   line-height: 1.5;
+}
+
+/* Dedicated YouTube Music link button */
+.btn-ytmusic-deck-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  color: #ff4d4d;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-ytmusic-deck-link:hover {
+  background: rgba(255, 0, 0, 0.22);
+  border-color: #ff3333;
+  color: #fff;
+  box-shadow: 0 0 14px rgba(255, 0, 0, 0.35);
+}
+
+.btn-icon-ytmusic {
+  color: #ff4d4d !important;
+}
+
+.btn-icon-ytmusic:hover {
+  background: rgba(255, 0, 0, 0.22) !important;
+  color: #fff !important;
+  border-color: #ff3333 !important;
 }

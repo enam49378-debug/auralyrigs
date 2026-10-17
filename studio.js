@@ -66,16 +66,26 @@
       try { state.ytPlayer.destroy(); } catch (_) {}
     }
 
+    const cleanVideoId = videoId || 'W22T_5YqH94';
+
+    // Actualizar botón para abrir SIEMPRE en YouTube Music (nunca en YouTube estándar)
+    const ytmBtn = document.getElementById('btn-open-ytmusic-live');
+    if (ytmBtn) {
+      ytmBtn.href = `https://music.youtube.com/watch?v=${cleanVideoId}`;
+    }
+
     state.ytPlayer = new YT.Player('yt-player', {
       height: '100%',
       width: '100%',
-      videoId: videoId || 'W22T_5YqH94',
+      videoId: cleanVideoId,
       playerVars: {
         autoplay: 0,
-        controls: 1,
+        controls: 0, // Desactiva la barra nativa para que nunca abra YouTube video estándar al hacer clic
         rel: 0,
         modestbranding: 1,
-        playsinline: 1
+        playsinline: 1,
+        disablekb: 1,
+        fs: 0
       },
       events: {
         onReady: onPlayerReady,
@@ -207,6 +217,12 @@
           <span class="song-card-artist">${escapeHtml(track.artist || 'Artista')}</span>
           <div class="song-card-actions">
             <button class="btn-edit" data-index="${index}">Editar Versos</button>
+            <a class="btn-icon-action btn-icon-ytmusic" href="https://music.youtube.com/watch?v=${videoId}" target="_blank" rel="noopener noreferrer" title="Escuchar en YouTube Music">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"></circle>
+                <polygon points="10 8 16 12 10 16 10 8"></polygon>
+              </svg>
+            </a>
             <button class="btn-icon-action btn-cinema-preview" data-index="${index}" title="Vista Previa Cinema">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -326,6 +342,12 @@
     if (artistEl) artistEl.textContent = state.currentTrack.artist || 'Desconocido';
     if (thumbEl && state.currentTrack.videoId) {
       thumbEl.src = `https://img.youtube.com/vi/${state.currentTrack.videoId}/hqdefault.jpg`;
+    }
+
+    // Actualizar enlace directo a YouTube Music
+    const ytmBtn = document.getElementById('btn-open-ytmusic-live');
+    if (ytmBtn && state.currentTrack.videoId) {
+      ytmBtn.href = `https://music.youtube.com/watch?v=${state.currentTrack.videoId}`;
     }
 
     // Load video in YouTube player
@@ -796,40 +818,130 @@
      ========================================================================= */
 
   async function fetchLrclibLyrics(title, artist, duration = 180) {
-    const cleanTitle = (title || '').replace(/\(.*?\)|\[.*?\]/g, '').replace(/\s+/g, ' ').trim();
-    const cleanArtist = (artist || '').split(/[•·,\/]/)[0].replace(/\s+/g, ' ').trim();
+    // 1. Limpieza exhaustiva de título: remover coletillas de YouTube (Official Video, Audio, Visualizer, etc.)
+    let cleanTitle = String(title || '')
+      .replace(/\s*[\(\[](?:official\s*(?:music\s*)?video|video\s*oficial|visualizer|lyric\s*video|audio\s*(?:oficial)?|lyrics?|remix|hd|4k|videoclip|letra|en\s*vivo|live)[\)\]]/gi, '')
+      .replace(/\s*-\s*(?:video\s*oficial|official\s*(?:music\s*)?video|visualizer|audio\s*oficial|audio|videoclip|letra)/gi, '')
+      .replace(/["'“”«»]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    console.log(`✨ AuraLyrics: Buscando en LRCLIB para "${cleanTitle}" - "${cleanArtist}"...`);
+    // 2. Si el título incluye "Artista - Canción" y el campo artista está vacío o genérico, separarlo automáticamente
+    let detectedArtist = String(artist || '').trim();
+    if ((!detectedArtist || detectedArtist.toLowerCase() === 'artista' || detectedArtist.toLowerCase() === 'desconocido') && cleanTitle.includes(' - ')) {
+      const parts = cleanTitle.split(' - ');
+      detectedArtist = parts[0].trim();
+      cleanTitle = parts.slice(1).join(' - ').trim();
+    }
 
-    // 1. Query search
-    try {
-      const qUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + cleanArtist)}`;
-      const res = await fetch(qUrl, { signal: AbortSignal.timeout(4000) });
-      if (res.ok) {
-        const list = await res.json();
-        if (Array.isArray(list) && list.length > 0) {
-          const withSynced = list.filter(item => item.syncedLyrics);
-          if (withSynced.length > 0) {
-            console.log('✨ AuraLyrics: Letra encontrada con éxito en LRCLIB!');
-            return parseLrcLyrics(withSynced[0].syncedLyrics, duration);
+    if (detectedArtist.toLowerCase() === 'artista' || detectedArtist.toLowerCase() === 'desconocido') {
+      detectedArtist = '';
+    }
+
+    const cleanArtist = detectedArtist.split(/[•·,\/]/)[0].replace(/["'“”«»]/g, '').trim();
+    console.log(`✨ Buscando en LRCLIB: Título="${cleanTitle}", Artista="${cleanArtist}"`);
+
+    // 3. Cascada de consultas optimizada (búsqueda difusa primero por máxima tolerancia)
+    const queries = [];
+    if (cleanTitle && cleanArtist) {
+      queries.push(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanArtist + ' ' + cleanTitle)}`);
+      queries.push(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + cleanArtist)}`);
+      queries.push(`https://lrclib.net/api/search?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}`);
+    }
+    if (cleanTitle) {
+      queries.push(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle)}`);
+    }
+
+    for (const url of queries) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4500);
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            // Prioridad 1: Canción con letra sincronizada
+            const withSynced = list.find(item => item.syncedLyrics && item.syncedLyrics.trim().length > 0);
+            if (withSynced) {
+              console.log('✅ LRCLIB: Letra sincronizada encontrada en', withSynced.trackName, 'de', withSynced.artistName);
+              return {
+                lines: parseLrcLyrics(withSynced.syncedLyrics, duration || withSynced.duration || 180),
+                foundTrackName: withSynced.trackName,
+                foundArtistName: withSynced.artistName,
+                isSynced: true
+              };
+            }
+
+            // Prioridad 2: Canción con letra en texto plano
+            const withPlain = list.find(item => item.plainLyrics && item.plainLyrics.trim().length > 0);
+            if (withPlain) {
+              console.log('ℹ️ LRCLIB: Letra en texto plano encontrada en', withPlain.trackName);
+              return {
+                lines: parsePlainLyrics(withPlain.plainLyrics, duration || withPlain.duration || 180),
+                foundTrackName: withPlain.trackName,
+                foundArtistName: withPlain.artistName,
+                isSynced: false
+              };
+            }
           }
         }
+      } catch (e) {
+        console.warn('LRCLIB advertencia en consulta:', url, e);
       }
-    } catch (_) {}
+    }
 
-    // 2. Direct track_name get
-    try {
-      const getUrl = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}&duration=${Math.round(duration)}`;
-      const res = await fetch(getUrl, { signal: AbortSignal.timeout(3000) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.syncedLyrics) {
-          return parseLrcLyrics(data.syncedLyrics, duration);
+    // 4. Intento directo con /api/get (coincidencia estricta)
+    if (cleanTitle && cleanArtist) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const getUrl = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}`;
+        const res = await fetch(getUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const d = await res.json();
+          if (d.syncedLyrics) {
+            return {
+              lines: parseLrcLyrics(d.syncedLyrics, duration || d.duration || 180),
+              foundTrackName: d.trackName,
+              foundArtistName: d.artistName,
+              isSynced: true
+            };
+          }
+          if (d.plainLyrics) {
+            return {
+              lines: parsePlainLyrics(d.plainLyrics, duration || d.duration || 180),
+              foundTrackName: d.trackName,
+              foundArtistName: d.artistName,
+              isSynced: false
+            };
+          }
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
 
     return null;
+  }
+
+  function parsePlainLyrics(plainText, totalDuration = 180) {
+    if (!plainText) return [];
+    const rawLines = plainText.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('[') && !l.endsWith(']'));
+    if (rawLines.length === 0) return [];
+
+    const step = Math.max(2.5, (totalDuration - 5) / rawLines.length);
+    return rawLines.map((line, idx) => {
+      const time = Math.round((idx * step) * 100) / 100;
+      const nextTime = Math.round(((idx + 1) * step) * 100) / 100;
+      return {
+        time,
+        text: line,
+        type: 'vocal',
+        words: distributeWordsForLine(line, time, nextTime)
+      };
+    });
   }
 
   function parseLrcLyrics(lrcText, totalDuration = 180) {
@@ -838,26 +950,32 @@
     const result = [];
 
     rawLines.forEach(lineStr => {
-      const match = lineStr.match(/\[(\d{2}):(\d{2}(?:\.\d+)?)\](.*)/);
-      if (match) {
+      // Soporte para múltiples marcas de tiempo por línea [00:12.34][01:05.10]
+      const tagRegex = /\[(\d{1,2}):(\d{2}(?:[\.:]\d+)?)\]/g;
+      let match;
+      const timestamps = [];
+      while ((match = tagRegex.exec(lineStr)) !== null) {
         const m = parseInt(match[1], 10);
-        const s = parseFloat(match[2]);
-        const text = match[3].trim();
-        if (text) {
-          const time = Math.round((m * 60 + s) * 100) / 100;
+        const s = parseFloat(match[2].replace(':', '.'));
+        timestamps.push(Math.round((m * 60 + s) * 100) / 100);
+      }
+
+      const cleanText = lineStr.replace(/\[\d{1,2}:\d{2}(?:[\.:]\d+)?\]/g, '').replace(/<[^>]+>/g, '').trim();
+      if (cleanText && timestamps.length > 0) {
+        timestamps.forEach(time => {
           result.push({
             time,
-            text,
+            text: cleanText,
             type: 'vocal',
             words: []
           });
-        }
+        });
       }
     });
 
     result.sort((a, b) => a.time - b.time);
 
-    // Auto-distribute words for each line
+    // Auto-distribuir palabras para cada verso
     result.forEach((l, idx) => {
       const nextTime = (idx < result.length - 1) ? result[idx + 1].time : (l.time + 3.5);
       l.words = distributeWordsForLine(l.text, l.time, nextTime);
@@ -1130,38 +1248,91 @@
     const previewArtist = document.getElementById('add-preview-artist');
 
     const handleYtInput = () => {
-      const val = (ytInput?.value || '').trim();
+      let val = (ytInput?.value || '').trim();
       let videoId = val;
-      const match = val.match(/(?:v=|\/watch\?v=|\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      const match = val.match(/(?:v=|v\/|embed\/|youtu\.be\/|watch\?v=)([a-zA-Z0-9_-]{11})/);
       if (match) videoId = match[1];
 
       if (videoId.length === 11) {
+        // Asegurar que siempre se muestre como enlace a YouTube Music
+        if (val.includes('youtube.com') && !val.includes('music.youtube.com')) {
+          ytInput.value = `https://music.youtube.com/watch?v=${videoId}`;
+        }
         if (previewImg) previewImg.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        if (previewTitle) previewTitle.textContent = titleInput?.value || 'Video Detectado';
-        if (previewArtist) previewArtist.textContent = artistInput?.value || 'YouTube';
+        if (previewTitle) previewTitle.textContent = titleInput?.value || 'Canción Detectada';
+        if (previewArtist) previewArtist.textContent = artistInput?.value || 'YouTube Music';
       }
     };
 
     ytInput?.addEventListener('input', handleYtInput);
     document.getElementById('btn-detect-yt')?.addEventListener('click', handleYtInput);
 
+    // Modal: Probar búsqueda en LRCLIB al instante
+    document.getElementById('btn-modal-test-lrclib')?.addEventListener('click', async () => {
+      const title = (titleInput?.value || '').trim();
+      const artist = (artistInput?.value || '').trim();
+      const feedback = document.getElementById('modal-lrclib-feedback');
+      if (!feedback) return;
+
+      if (!title) {
+        feedback.style.display = 'block';
+        feedback.style.color = '#ff4d4d';
+        feedback.textContent = '⚠️ Ingresa al menos el título de la canción para buscar en LRCLIB.';
+        return;
+      }
+
+      feedback.style.display = 'block';
+      feedback.style.color = '#cbd5e1';
+      feedback.textContent = '⏳ Buscando letra en LRCLIB...';
+
+      const res = await fetchLrclibLyrics(title, artist, 180);
+      if (res && res.lines && res.lines.length > 0) {
+        feedback.style.color = '#aaff00';
+        feedback.innerHTML = `✅ ¡Letra ${res.isSynced ? 'sincronizada' : 'en texto plano'} encontrada! (<strong>${res.lines.length} versos</strong>) — <em>${escapeHtml(res.foundTrackName)}</em> de <em>${escapeHtml(res.foundArtistName || 'Artista')}</em>`;
+        if (res.foundTrackName && (!titleInput.value || titleInput.value.toLowerCase() === 'nueva canción')) {
+          titleInput.value = res.foundTrackName;
+        }
+        if (res.foundArtistName && (!artistInput.value || artistInput.value.toLowerCase() === 'artista')) {
+          artistInput.value = res.foundArtistName;
+        }
+      } else {
+        feedback.style.color = '#ffbe0b';
+        feedback.textContent = '⚠️ No se encontró en LRCLIB. Prueba ajustando el nombre o artista exactos.';
+      }
+    });
+
     // Create Song from Modal
     document.getElementById('btn-submit-create-song')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-submit-create-song');
       const val = (ytInput?.value || '').trim();
       let videoId = 'W22T_5YqH94';
-      const match = val.match(/(?:v=|\/watch\?v=|\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      const match = val.match(/(?:v=|v\/|embed\/|youtu\.be\/|watch\?v=)([a-zA-Z0-9_-]{11})/);
       if (match) videoId = match[1];
       else if (val.length === 11) videoId = val;
 
-      const title = (titleInput?.value || '').trim() || 'Nueva Canción';
-      const artist = (artistInput?.value || '').trim() || 'Artista';
+      let title = (titleInput?.value || '').trim() || 'Nueva Canción';
+      let artist = (artistInput?.value || '').trim() || '';
       const useLrclib = document.getElementById('chk-auto-lrclib')?.checked;
 
       let fetchedLines = [];
       if (useLrclib) {
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = `<span>⏳ Consultando LRCLIB...</span>`;
+        }
         const lrclibRes = await fetchLrclibLyrics(title, artist, 180);
-        if (lrclibRes && lrclibRes.length > 0) {
-          fetchedLines = lrclibRes;
+        if (lrclibRes && lrclibRes.lines && lrclibRes.lines.length > 0) {
+          fetchedLines = lrclibRes.lines;
+          if (lrclibRes.foundTrackName && (!titleInput.value || titleInput.value.toLowerCase() === 'nueva canción')) {
+            title = lrclibRes.foundTrackName;
+          }
+          if (lrclibRes.foundArtistName && (!artistInput.value || artistInput.value.toLowerCase() === 'artista')) {
+            artist = lrclibRes.foundArtistName;
+          }
+        }
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<span>Crear y Abrir en Editor</span>`;
         }
       }
 
@@ -1184,6 +1355,13 @@
       if (modalAdd) modalAdd.style.display = 'none';
       state.libraryTracks.unshift(newTrack);
       openTrackInEditor(newTrack, 1);
+    });
+
+    // YouTube Player Overlay (intercepta clics para reproducir/pausar localmente, NUNCA abre YouTube estándar)
+    document.getElementById('yt-player-overlay')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      togglePlayPause();
     });
 
     // Transport buttons
@@ -1240,13 +1418,13 @@
       const btn = document.getElementById('btn-step1-fetch-lrclib');
       if (btn) btn.innerHTML = `<span>Buscando en LRCLIB...</span>`;
 
-      const lines = await fetchLrclibLyrics(state.currentTrack.title, state.currentTrack.artist, state.duration);
-      if (lines && lines.length > 0) {
-        state.currentTrack.lines = lines;
+      const lrclibRes = await fetchLrclibLyrics(state.currentTrack.title, state.currentTrack.artist, state.duration);
+      if (lrclibRes && lrclibRes.lines && lrclibRes.lines.length > 0) {
+        state.currentTrack.lines = lrclibRes.lines;
         renderStep1Verses();
-        alert(`✨ Se importaron ${lines.length} versos sincronizados desde LRCLIB!`);
+        alert(`✨ Se importaron ${lrclibRes.lines.length} versos (${lrclibRes.isSynced ? 'sincronizados' : 'texto plano'}) desde LRCLIB!`);
       } else {
-        alert('No se encontraron letras en LRCLIB para esta canción. Puedes pegarlas manualmente.');
+        alert('No se encontraron letras en LRCLIB para esta canción. Puedes pegarlas manualmente en "Pegar Letra Raw".');
       }
 
       if (btn) btn.innerHTML = `<span class="lrclib-sparkle">✨</span><span>Buscar en LRCLIB</span>`;

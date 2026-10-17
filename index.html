@@ -157,10 +157,26 @@
     <div class="editor-workspace-layout">
       <!-- Persistent Left Player Column -->
       <aside class="editor-player-sidebar">
-        <!-- YouTube Embed Deck -->
+        <!-- YouTube Embed Deck (con overlay de seguridad para que nunca abra YouTube estándar) -->
         <div class="sidebar-yt-wrapper">
           <div id="yt-player"></div>
+          <div id="yt-player-overlay" class="yt-player-overlay" title="Haz clic para Reproducir / Pausar">
+            <div class="overlay-play-hint">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+            </div>
+          </div>
         </div>
+        <a id="btn-open-ytmusic-live" href="https://music.youtube.com/watch?v=W22T_5YqH94" target="_blank" rel="noopener noreferrer" class="btn-ytmusic-deck-link" title="Abrir canción en YouTube Music">
+          <span class="ytmusic-badge-icon">🎵</span>
+          <span>Abrir en YouTube Music</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
 
         <!-- Master Transport & Time Display -->
         <div class="transport-dock">
@@ -470,12 +486,16 @@
         <div class="lrclib-callout-card">
           <div class="lrclib-callout-header">
             <span class="lrclib-badge-pill">LRCLIB INTEGRATION</span>
-            <label class="custom-chk">
-              <input type="checkbox" id="chk-auto-lrclib" checked />
-              <span>Buscar y rellenar versos automáticamente con LRCLIB</span>
-            </label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button type="button" class="btn-secondary-micro" id="btn-modal-test-lrclib">🔍 Probar Búsqueda Ahora</button>
+              <label class="custom-chk">
+                <input type="checkbox" id="chk-auto-lrclib" checked />
+                <span>Auto-cargar al crear</span>
+              </label>
+            </div>
           </div>
-          <p>Consulta la base de datos de <code>lrclib.net</code> para cargar la letra ya estructurada y ahorrarte escribirla.</p>
+          <p>Consulta la base de datos de <code>lrclib.net</code> para cargar la letra sincronizada palabra por palabra.</p>
+          <div id="modal-lrclib-feedback" style="display: none; margin-top: 8px; font-size: 0.8rem; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.5);"></div>
         </div>
 
         <!-- Cover Preview -->
