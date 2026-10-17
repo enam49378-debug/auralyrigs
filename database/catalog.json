@@ -1,0 +1,23 @@
+{
+  "updatedAt": "2026-10-17T02:30:00Z",
+  "tracks": [
+    {
+      "fileName": "charli_xcx_360.json",
+      "title": "360",
+      "artist": "Charli xcx",
+      "videoId": "W22T_5YqH94",
+      "duration": 133,
+      "linesCount": 8,
+      "hasBratEffects": true
+    },
+    {
+      "fileName": "milo_j_m_a_i.json",
+      "title": "M.A.I",
+      "artist": "Milo J",
+      "videoId": "8Z_Vz9lLDK0",
+      "duration": 184,
+      "linesCount": 4,
+      "hasBratEffects": false
+    }
+  ]
+}

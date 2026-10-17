@@ -112,24 +112,69 @@
      2. LIBRARY (CARDS MENU) VIEW LOGIC
      ========================================================================= */
 
+  function isCloudMode() {
+    return window.location.hostname.includes('github.io') || window.location.protocol === 'file:' || window.location.port !== '3000';
+  }
+
+  function updateServerStatusBadge() {
+    const statusPill = document.getElementById('server-status-pill');
+    const statusText = document.getElementById('server-status-text');
+    if (!statusText) return;
+
+    if (isCloudMode()) {
+      statusText.textContent = 'AuraLyrics Cloud (GitHub Pages)';
+      if (statusPill) statusPill.style.borderColor = 'rgba(138, 206, 0, 0.4)';
+    } else {
+      statusText.textContent = 'Servidor Local: Conectado (3000)';
+    }
+  }
+
   async function loadLibraryTracks() {
+    updateServerStatusBadge();
+    let loadedTracks = [];
+
+    // 1. Intentar servidor local (si está corriendo en localhost:3000)
     try {
       const res = await fetch('/api/lyrics/list');
       if (res.ok) {
         const data = await res.json();
         if (data && Array.isArray(data.tracks) && data.tracks.length > 0) {
-          state.libraryTracks = data.tracks;
-          renderLibraryCards();
-          updateHeaderStats();
-          return;
+          loadedTracks = data.tracks;
         }
       }
-    } catch (_) {
-      console.warn('AuraLyrics: Servidor local no disponible, usando demostración');
+    } catch (_) {}
+
+    // 2. Si es GitHub Pages o falló el servidor local, cargar desde catalog.json estático
+    if (loadedTracks.length === 0) {
+      try {
+        const catRes = await fetch('./database/catalog.json');
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          if (catData && Array.isArray(catData.tracks)) {
+            loadedTracks = catData.tracks;
+          }
+        }
+      } catch (_) {}
     }
 
-    // Fallback inicial
-    state.libraryTracks = [...DEFAULT_DEMO_TRACKS];
+    // 3. Mezclar con canciones guardadas en localStorage del navegador
+    try {
+      const localSaved = JSON.parse(localStorage.getItem('auralyrics_cloud_tracks') || '[]');
+      if (Array.isArray(localSaved) && localSaved.length > 0) {
+        localSaved.forEach(s => {
+          if (!loadedTracks.some(t => t.title === s.title && t.artist === s.artist)) {
+            loadedTracks.unshift(s);
+          }
+        });
+      }
+    } catch (_) {}
+
+    // 4. Si aún estuviera vacío, usar las demos iniciales
+    if (loadedTracks.length === 0) {
+      loadedTracks = [...DEFAULT_DEMO_TRACKS];
+    }
+
+    state.libraryTracks = loadedTracks;
     renderLibraryCards();
     updateHeaderStats();
   }
@@ -216,7 +261,30 @@
       }
     } catch (_) {}
 
-    // Fallback if not on server yet
+    // Fallback if not on server yet (e.g. GitHub Pages)
+    if (!fullTrack && trackMeta.fileName) {
+      try {
+        const fileRes = await fetch(`./database/${trackMeta.fileName}`);
+        if (fileRes.ok) {
+          const fileData = await fileRes.json();
+          if (fileData && fileData.track) {
+            fullTrack = fileData.track;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!fullTrack) {
+      // Check localStorage
+      try {
+        const localSaved = JSON.parse(localStorage.getItem('auralyrics_cloud_tracks') || '[]');
+        const foundLocal = localSaved.find(s => s.title === trackMeta.title && s.artist === trackMeta.artist);
+        if (foundLocal && foundLocal.raw && foundLocal.raw.track) {
+          fullTrack = foundLocal.raw.track;
+        }
+      } catch (_) {}
+    }
+
     if (!fullTrack) {
       if (trackMeta.raw && trackMeta.raw.track) {
         fullTrack = trackMeta.raw.track;
@@ -823,12 +891,15 @@
   async function saveCurrentTrackToDatabase() {
     if (!state.currentTrack) return;
 
-    try {
-      const payload = {
-        found: true,
-        track: state.currentTrack
-      };
+    const payload = {
+      found: true,
+      track: state.currentTrack
+    };
 
+    let savedLocally = false;
+
+    // 1. Intentar guardar en servidor Node.js si está disponible
+    try {
       const res = await fetch('/api/lyrics/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -837,13 +908,42 @@
 
       if (res.ok) {
         const data = await res.json();
-        alert(`✨ Canción guardada con éxito en: ${data.fileName}`);
+        alert(`✨ Canción guardada con éxito en el servidor local: ${data.fileName}`);
+        savedLocally = true;
         loadLibraryTracks();
-      } else {
-        alert('Error al guardar en el servidor');
+        return;
       }
+    } catch (_) {}
+
+    // 2. Si es GitHub Pages o no hay servidor local, guardar en localStorage del navegador
+    try {
+      const cleanA = sanitize(state.currentTrack.artist || 'unknown');
+      const cleanT = sanitize(state.currentTrack.title || 'untitled');
+      const filename = `${cleanA}_${cleanT}.json`;
+
+      const trackMeta = {
+        fileName: filename,
+        title: state.currentTrack.title,
+        artist: state.currentTrack.artist,
+        videoId: state.currentTrack.videoId,
+        linesCount: state.currentTrack.lines ? state.currentTrack.lines.length : 0,
+        hasBratEffects: !!(state.currentTrack.effects && state.currentTrack.effects.theme === 'brat'),
+        raw: payload
+      };
+
+      const localSaved = JSON.parse(localStorage.getItem('auralyrics_cloud_tracks') || '[]');
+      const existingIdx = localSaved.findIndex(s => s.title === trackMeta.title && s.artist === trackMeta.artist);
+      if (existingIdx >= 0) {
+        localSaved[existingIdx] = trackMeta;
+      } else {
+        localSaved.unshift(trackMeta);
+      }
+      localStorage.setItem('auralyrics_cloud_tracks', JSON.stringify(localSaved));
+
+      alert(`✨ Guardado en tu biblioteca Cloud (Navegador). Para publicarla en GitHub, haz clic en "Exportar" y descarga el archivo JSON.`);
+      loadLibraryTracks();
     } catch (err) {
-      alert('No se pudo conectar con el servidor local para guardar: ' + err.message);
+      alert('Error al guardar en el navegador: ' + err.message);
     }
   }
 

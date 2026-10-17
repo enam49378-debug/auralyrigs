@@ -179,6 +179,19 @@ const server = http.createServer((req, res) => {
         fs.writeFileSync(filePath, JSON.stringify(formatted, null, 2), 'utf8');
         console.log(`✨ AuraLyrics: Letra guardada con éxito en ${filename}`);
 
+        // Actualizar automáticamente catalog.json para GitHub Pages
+        try {
+          const allTracks = loadDatabaseTracks().map(t => ({
+            fileName: t.fileName,
+            title: t.title,
+            artist: t.artist,
+            videoId: t.videoId,
+            linesCount: t.linesCount,
+            hasBratEffects: t.hasBratEffects
+          }));
+          fs.writeFileSync(path.join(DB_DIR, 'catalog.json'), JSON.stringify({ updatedAt: new Date().toISOString(), tracks: allTracks }, null, 2), 'utf8');
+        } catch (_) {}
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           success: true,
