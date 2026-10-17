@@ -21,7 +21,11 @@
     lastActiveVerseIdx: -1,
     lastActiveWordIdx: -1,
     activeBeatIndex: -1,
-    tapTempoTimes: []
+    tapTempoTimes: [],
+    selectedKeyframeIndex: 0,
+    syllablePace: 0.35,
+    pendingAutoLyrics: null,
+    debounceDetectTimer: null
   };
 
   // Sample default tracks if server database is empty
@@ -30,10 +34,11 @@
       fileName: 'charli_xcx_360.json',
       title: '360',
       artist: 'Charli xcx',
-      videoId: 'W22T_5YqH94',
+      videoId: 'WJW-VvmRKsE',
       duration: 133,
       linesCount: 8,
-      hasBratEffects: true
+      hasBratEffects: true,
+      humanReviewed: true
     },
     {
       fileName: 'milo_j_m_a_i.json',
@@ -42,7 +47,8 @@
       videoId: '8Z_Vz9lLDK0',
       duration: 184,
       linesCount: 4,
-      hasBratEffects: false
+      hasBratEffects: false,
+      humanReviewed: false
     }
   ];
 
@@ -58,7 +64,7 @@
   // YouTube IFrame API Callback
   window.onYouTubeIframeAPIReady = () => {
     console.log('🎬 AuraLyrics: YouTube IFrame API Listo');
-    createYouTubePlayer('W22T_5YqH94');
+    createYouTubePlayer('WJW-VvmRKsE');
   };
 
   function createYouTubePlayer(videoId) {
@@ -66,7 +72,7 @@
       try { state.ytPlayer.destroy(); } catch (_) {}
     }
 
-    const cleanVideoId = videoId || 'W22T_5YqH94';
+    const cleanVideoId = videoId || 'WJW-VvmRKsE';
 
     // Actualizar botón para abrir SIEMPRE en YouTube Music (nunca en YouTube estándar)
     const ytmBtn = document.getElementById('btn-open-ytmusic-live');
@@ -209,6 +215,7 @@
           <img src="${thumbUrl}" alt="${escapeHtml(track.title)}" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=60'" />
           <div class="song-card-badges-row">
             ${isBrat ? '<span class="badge-brat-kinetic">BRAT 808</span>' : '<span class="badge-brat-kinetic" style="background:#9d4edd;color:#fff;">CINEMA</span>'}
+            ${track.humanReviewed ? '<span class="badge-human-verified">VERIFICADO ✨</span>' : ''}
             <span class="badge-lines-count">${track.linesCount || 0} versos</span>
           </div>
         </div>
@@ -318,18 +325,25 @@
 
     state.currentTrack = fullTrack;
     if (!state.currentTrack.effects) {
-      state.currentTrack.effects = { theme: 'brat', bassBeats: [], palette: 'lime', blur: 6, scale: 1.5, shake: true };
+      state.currentTrack.effects = { theme: 'brat', bassBeats: [], palette: 'lime', blur: 6, scale: 1.5, shake: true, keyframes: [] };
     }
     if (!Array.isArray(state.currentTrack.effects.bassBeats)) {
       state.currentTrack.effects.bassBeats = [];
     }
+    if (!Array.isArray(state.currentTrack.effects.keyframes) || state.currentTrack.effects.keyframes.length === 0) {
+      state.currentTrack.effects.keyframes = [
+        { time: 0, palette: 'lime', color: '#8acf00', bgMode: 'solid', layout: 'impact', variant: 'heavy', blur: 6, scale: 1.5, shake: true },
+        { time: 24.0, palette: 'purple', color: '#9d4edd', bgMode: 'radial-glow', layout: 'spread', variant: 'lean', blur: 8, scale: 1.4, shake: true },
+        { time: 55.0, palette: 'cyan', color: '#00f5d4', bgMode: 'brat-matrix', layout: 'scribble', variant: 'wide', blur: 10, scale: 1.8, shake: true }
+      ];
+    }
 
-    // Auto-populate words if missing
+    // Auto-populate words if missing using AuraMusic syllable timing
     if (Array.isArray(state.currentTrack.lines)) {
       state.currentTrack.lines.forEach((l, idx) => {
         if (!Array.isArray(l.words) || l.words.length === 0) {
           const nextTime = (idx < state.currentTrack.lines.length - 1) ? state.currentTrack.lines[idx + 1].time : (l.time + 3.5);
-          l.words = distributeWordsForLine(l.text, l.time, nextTime);
+          l.words = estimateWordsForLine(l.text, l.time, nextTime, state.syllablePace || 0.35);
         }
       });
     }
@@ -344,6 +358,15 @@
       thumbEl.src = `https://img.youtube.com/vi/${state.currentTrack.videoId}/hqdefault.jpg`;
     }
 
+    // Update Human Review button in Step 2
+    const hrBtn = document.getElementById('btn-toggle-human-review');
+    const hrText = document.getElementById('lbl-human-review-text');
+    if (hrBtn && hrText) {
+      const isRev = !!state.currentTrack.humanReviewed;
+      hrBtn.classList.toggle('verified', isRev);
+      hrText.textContent = isRev ? 'Verificado por Humano ✨' : 'Marcar como Verificado por Humano';
+    }
+
     // Actualizar enlace directo a YouTube Music
     const ytmBtn = document.getElementById('btn-open-ytmusic-live');
     if (ytmBtn && state.currentTrack.videoId) {
@@ -351,12 +374,13 @@
     }
 
     // Load video in YouTube player
+    const defVid = state.currentTrack.videoId || 'WJW-VvmRKsE';
     if (state.ytPlayer && typeof state.ytPlayer.loadVideoById === 'function') {
       try {
-        state.ytPlayer.cueVideoById(state.currentTrack.videoId || 'W22T_5YqH94');
+        state.ytPlayer.cueVideoById(defVid);
       } catch (_) {}
     } else {
-      createYouTubePlayer(state.currentTrack.videoId || 'W22T_5YqH94');
+      createYouTubePlayer(defVid);
     }
 
     // Populate UI steps
@@ -499,8 +523,36 @@
   }
 
   /* =========================================================================
-     5. STEP 2: FRASES Y PALABRAS (KARAOKE PALABRA POR PALABRA)
+     5. STEP 2: FRASES Y PALABRAS (MOTOR AURAMUSIC & REVISIÓN HUMANA)
      ========================================================================= */
+
+  function toggleHumanReview() {
+    if (!state.currentTrack) return;
+    state.currentTrack.humanReviewed = !state.currentTrack.humanReviewed;
+    const hrBtn = document.getElementById('btn-toggle-human-review');
+    const hrText = document.getElementById('lbl-human-review-text');
+    if (hrBtn && hrText) {
+      const isRev = state.currentTrack.humanReviewed;
+      hrBtn.classList.toggle('verified', isRev);
+      hrText.textContent = isRev ? 'Verificado por Humano ✨' : 'Marcar como Verificado por Humano';
+    }
+  }
+
+  function reanalyzeWithAuraMusicEngine() {
+    if (!state.currentTrack || !Array.isArray(state.currentTrack.lines)) return;
+    const lines = state.currentTrack.lines;
+    const pacingProfiles = profilePacing(lines);
+    const pace = state.syllablePace || 0.35;
+
+    lines.forEach((l, idx) => {
+      const nextTime = (idx < lines.length - 1) ? lines[idx + 1].time : (l.time + 3.5);
+      const localPace = pacingProfiles[idx] || pace;
+      l.words = estimateWordsForLine(l.text, l.time, nextTime, localPace);
+    });
+
+    renderStep2WordsStage();
+    alert(`✨ Se re-analizaron ${lines.length} versos con el motor fonético de AuraMusic (${pace.toFixed(2)}s/sílaba).`);
+  }
 
   function renderStep2VerseDropdown() {
     const dd = document.getElementById('words-verse-dropdown');
@@ -517,10 +569,16 @@
       dd.appendChild(opt);
     });
 
-    // Update vocal type selector
     const vocalSelect = document.getElementById('verse-vocal-type');
     if (vocalSelect && lines[state.selectedVerseIndex]) {
       vocalSelect.value = lines[state.selectedVerseIndex].type || 'vocal';
+    }
+
+    const paceSlider = document.getElementById('slider-syllable-pace');
+    const paceLbl = document.getElementById('lbl-pace-val');
+    if (paceSlider && paceLbl) {
+      paceSlider.value = state.syllablePace || 0.35;
+      paceLbl.textContent = `${(state.syllablePace || 0.35).toFixed(2)}s`;
     }
   }
 
@@ -532,92 +590,403 @@
     const line = state.currentTrack.lines[state.selectedVerseIndex];
 
     if (!line) {
-      stage.innerHTML = `<div style="padding: 20px; color: #64748b;">Selecciona un verso para editar sus palabras.</div>`;
+      stage.innerHTML = `<div style="padding: 20px; color: #64748b;">Selecciona un verso para editar sus frases y palabras.</div>`;
       return;
     }
 
-    const words = line.words || [];
+    // Asegurar palabras estimadas si no existen
+    if (!Array.isArray(line.words) || line.words.length === 0) {
+      const nextTime = (state.selectedVerseIndex < state.currentTrack.lines.length - 1)
+        ? state.currentTrack.lines[state.selectedVerseIndex + 1].time
+        : (line.time + 3.5);
+      line.words = estimateWordsForLine(line.text, line.time, nextTime, state.syllablePace || 0.35);
+    }
 
-    words.forEach((w, wIdx) => {
-      const row = document.createElement('div');
-      row.className = 'word-card-row';
-      const durationSecs = Math.max(0.1, (w.end - w.start)).toFixed(2);
+    // Segmentación de frases de AuraMusic
+    const tokens = tokenize(line.text);
+    const phrases = splitLinePhrases(tokens, line.words);
 
-      row.innerHTML = `
-        <div class="word-title">${escapeHtml(w.word)}</div>
-        <div class="word-time-steppers">
-          <div class="time-stepper-field">
-            <label>Inicio (s):</label>
-            <input type="number" step="0.05" class="input-w-start" value="${w.start.toFixed(2)}" />
+    const container = document.createElement('div');
+    container.className = 'phrase-blocks-flow';
+
+    phrases.forEach((phrase, pIdx) => {
+      const pCard = document.createElement('div');
+      pCard.className = 'phrase-block-card';
+
+      const pStart = phrase.startTime.toFixed(2);
+      const pEnd = phrase.endTime.toFixed(2);
+      const dur = Math.max(0.1, phrase.endTime - phrase.startTime).toFixed(2);
+
+      pCard.innerHTML = `
+        <div class="phrase-block-header">
+          <div class="phrase-meta-info">
+            <span class="phrase-index-tag">Frase #${pIdx + 1}</span>
+            <span>Inicio: <strong>${pStart}s</strong></span>
+            <span>Fin: <strong>${pEnd}s</strong></span>
+            <span style="color:var(--accent-lime)">(${dur}s)</span>
           </div>
-          <div class="time-stepper-field">
-            <label>Fin (s):</label>
-            <input type="number" step="0.05" class="input-w-end" value="${w.end.toFixed(2)}" />
+          <div class="phrase-actions">
+            <button class="btn-split-phrase" data-pidx="${pIdx}">✂️ Dividir Frase</button>
+            ${pIdx < phrases.length - 1 ? `<button class="btn-merge-phrase" data-pidx="${pIdx}">🔗 Unir con Siguiente</button>` : ''}
           </div>
-          <div class="time-stepper-field">
-            <span style="color:#64748b;">(${durationSecs}s)</span>
-          </div>
-          <button class="btn-secondary-micro btn-play-word" title="Escuchar esta palabra">▶ Probar</button>
         </div>
+        <div class="phrase-words-row" id="phrase-words-${pIdx}"></div>
       `;
 
-      // Change listeners
-      const inputStart = row.querySelector('.input-w-start');
-      const inputEnd = row.querySelector('.input-w-end');
+      const wordsRow = pCard.querySelector(`#phrase-words-${pIdx}`);
 
-      inputStart.addEventListener('change', () => {
-        w.start = parseFloat(inputStart.value) || 0;
+      phrase.words.forEach((w) => {
+        const wChip = document.createElement('div');
+        wChip.className = 'word-chip-box';
+
+        const isCurrent = state.currentTime >= w.start && state.currentTime < w.end;
+        if (isCurrent) wChip.classList.add('current-word');
+
+        wChip.innerHTML = `
+          <div class="word-text-line">
+            <span>${escapeHtml(w.word)}</span>
+            <span class="word-time-badge">${w.start.toFixed(2)}s</span>
+          </div>
+          <div class="word-nudge-row">
+            <button class="btn-word-nudge btn-nudge-minus" title="Adelantar -0.1s">-0.1s</button>
+            <button class="btn-word-nudge btn-play-single-word" title="Escuchar">▶</button>
+            <button class="btn-word-nudge btn-nudge-plus" title="Atrasar +0.1s">+0.1s</button>
+          </div>
+        `;
+
+        wChip.querySelector('.btn-nudge-minus').addEventListener('click', (e) => {
+          e.stopPropagation();
+          w.start = Math.max(0, Math.round((w.start - 0.1) * 100) / 100);
+          w.end = Math.max(w.start + 0.05, Math.round((w.end - 0.1) * 100) / 100);
+          renderStep2WordsStage();
+        });
+
+        wChip.querySelector('.btn-nudge-plus').addEventListener('click', (e) => {
+          e.stopPropagation();
+          w.start = Math.round((w.start + 0.1) * 100) / 100;
+          w.end = Math.round((w.end + 0.1) * 100) / 100;
+          renderStep2WordsStage();
+        });
+
+        wChip.querySelector('.btn-play-single-word').addEventListener('click', (e) => {
+          e.stopPropagation();
+          seekTo(w.start);
+          play();
+        });
+
+        wordsRow.appendChild(wChip);
       });
 
-      inputEnd.addEventListener('change', () => {
-        w.end = parseFloat(inputEnd.value) || 0;
+      // Split button listener
+      pCard.querySelector('.btn-split-phrase')?.addEventListener('click', () => {
+        if (phrase.words.length <= 1) {
+          alert('Esta frase tiene solo 1 palabra, no se puede dividir más.');
+          return;
+        }
+        const mid = Math.floor(phrase.words.length / 2);
+        const secondHalfStart = phrase.words[mid].start;
+        phrase.words[mid - 1].end = secondHalfStart;
+        renderStep2WordsStage();
       });
 
-      row.querySelector('.btn-play-word').addEventListener('click', () => {
-        seekTo(w.start);
-        play();
+      // Merge button listener
+      pCard.querySelector('.btn-merge-phrase')?.addEventListener('click', () => {
+        if (pIdx < phrases.length - 1) {
+          const nextP = phrases[pIdx + 1];
+          phrase.endTime = nextP.endTime;
+          if (phrase.words.length && nextP.words.length) {
+            phrase.words[phrase.words.length - 1].end = nextP.words[0].start;
+          }
+          renderStep2WordsStage();
+        }
       });
 
-      stage.appendChild(row);
+      container.appendChild(pCard);
     });
+
+    stage.appendChild(container);
   }
 
   /* =========================================================================
-     6. STEP 3: EFECTOS VISUALES & RITMO BRAT
+     6. STEP 3: EDITOR DE VIDEO & KEYFRAMES DE COLOR
      ========================================================================= */
 
   function renderStep3Effects() {
     if (!state.currentTrack) return;
-    const effects = state.currentTrack.effects;
-
-    // Palette active swatch
-    document.querySelectorAll('.palette-swatch-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.palette === effects.palette);
-    });
-
-    // Sliders
-    const blurSlider = document.getElementById('step3-slider-blur');
-    const scaleSlider = document.getElementById('step3-slider-scale');
-    const shakeChk = document.getElementById('step3-chk-shake');
-    const blurLbl = document.getElementById('lbl-blur-val');
-    const scaleLbl = document.getElementById('lbl-scale-val');
-    const beatsCountLbl = document.getElementById('lbl-beats-count');
-
-    if (blurSlider) blurSlider.value = effects.blur || 6;
-    if (scaleSlider) scaleSlider.value = effects.scale || 1.5;
-    if (shakeChk) shakeChk.checked = effects.shake !== false;
-    if (blurLbl) blurLbl.textContent = `${effects.blur || 6}px`;
-    if (scaleLbl) scaleLbl.textContent = `${effects.scale || 1.5}x`;
-    if (beatsCountLbl) beatsCountLbl.textContent = effects.bassBeats.length;
-
-    // Update Live Cinema Preview Stage Palette
-    const stage = document.getElementById('step3-cinema-stage');
-    if (stage) {
-      stage.setAttribute('data-lyrics-theme', effects.theme || 'brat');
-      stage.setAttribute('data-brat-palette', effects.palette || 'lime');
+    if (!state.currentTrack.effects) {
+      state.currentTrack.effects = {
+        theme: 'brat',
+        bassBeats: [],
+        palette: 'lime',
+        blur: 6,
+        scale: 1.5,
+        shake: true,
+        keyframes: []
+      };
+    }
+    if (!Array.isArray(state.currentTrack.effects.keyframes) || state.currentTrack.effects.keyframes.length === 0) {
+      state.currentTrack.effects.keyframes = [
+        { time: 0, palette: 'lime', color: '#8acf00', bgMode: 'solid', layout: 'impact', variant: 'heavy', blur: 6, scale: 1.5, shake: true },
+        { time: 24.0, palette: 'purple', color: '#9d4edd', bgMode: 'radial-glow', layout: 'spread', variant: 'lean', blur: 8, scale: 1.4, shake: true },
+        { time: 55.0, palette: 'cyan', color: '#00f5d4', bgMode: 'brat-matrix', layout: 'scribble', variant: 'wide', blur: 10, scale: 1.8, shake: true }
+      ];
     }
 
-    renderBeatMarkersTrack();
+    renderVideoEditorTimeline();
+    renderKeyframeInspector();
+    updateLiveCinemaStageFromKeyframes();
+  }
+
+  function renderVideoEditorTimeline() {
+    const dur = Math.max(10, state.duration || 133);
+    const ruler = document.getElementById('ve-ruler-track');
+    const laneColors = document.getElementById('ve-lane-colors');
+    const laneLayout = document.getElementById('ve-lane-layout');
+    const laneBeats = document.getElementById('ve-lane-beats');
+    const playhead = document.getElementById('ve-playhead-needle');
+    const tcDigits = document.getElementById('ve-tc-display');
+
+    if (tcDigits) tcDigits.textContent = formatTime(state.currentTime);
+    if (playhead) {
+      const pct = (state.currentTime / dur) * 100;
+      playhead.style.left = `${Math.min(100, Math.max(0, pct))}%`;
+    }
+
+    // Ruler notches
+    if (ruler) {
+      ruler.innerHTML = '';
+      const step = dur > 120 ? 15 : 10;
+      for (let sec = 0; sec <= dur; sec += step) {
+        const pct = (sec / dur) * 100;
+        const notch = document.createElement('div');
+        notch.className = 've-ruler-notch';
+        notch.style.left = `${pct}%`;
+        notch.textContent = formatTime(sec).split('.')[0];
+        ruler.appendChild(notch);
+      }
+    }
+
+    // Color Lane Keyframes
+    if (laneColors) {
+      laneColors.innerHTML = '';
+      const keyframes = state.currentTrack.effects.keyframes || [];
+
+      keyframes.forEach((kf, idx) => {
+        const pct = (kf.time / dur) * 100;
+        const diamond = document.createElement('div');
+        diamond.className = `ve-kf-diamond kf-color-${kf.palette || 'lime'}` + (idx === state.selectedKeyframeIndex ? ' selected' : '');
+        diamond.style.left = `${pct}%`;
+        diamond.style.backgroundColor = kf.color || '#8acf00';
+        diamond.title = `Keyframe #${idx + 1} (${formatTime(kf.time)}) — Color: ${kf.color || kf.palette}`;
+
+        diamond.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.selectedKeyframeIndex = idx;
+          seekTo(kf.time);
+          renderStep3Effects();
+        });
+
+        laneColors.appendChild(diamond);
+      });
+    }
+
+    // Layout Lane Keyframes
+    if (laneLayout) {
+      laneLayout.innerHTML = '';
+      const keyframes = state.currentTrack.effects.keyframes || [];
+
+      keyframes.forEach((kf, idx) => {
+        const pct = (kf.time / dur) * 100;
+        const diamond = document.createElement('div');
+        diamond.className = 've-kf-diamond kf-layout-diamond' + (idx === state.selectedKeyframeIndex ? ' selected' : '');
+        diamond.style.left = `${pct}%`;
+        diamond.title = `Layout: ${kf.layout || 'impact'} (${formatTime(kf.time)})`;
+
+        diamond.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.selectedKeyframeIndex = idx;
+          seekTo(kf.time);
+          renderStep3Effects();
+        });
+
+        laneLayout.appendChild(diamond);
+      });
+    }
+
+    // 808 Beats Lane
+    if (laneBeats) {
+      laneBeats.innerHTML = '';
+      const beats = state.currentTrack.effects.bassBeats || [];
+
+      beats.forEach(b => {
+        const pct = (b / dur) * 100;
+        const marker = document.createElement('div');
+        marker.className = 've-beat-marker';
+        marker.style.left = `${pct}%`;
+        marker.title = `Golpe 808 en ${formatTime(b)}`;
+        laneBeats.appendChild(marker);
+      });
+    }
+  }
+
+  function renderKeyframeInspector() {
+    const kfs = state.currentTrack.effects.keyframes || [];
+    const kf = kfs[state.selectedKeyframeIndex] || kfs[0];
+    if (!kf) return;
+
+    const titleEl = document.getElementById('inspector-kf-title');
+    const inputTime = document.getElementById('input-kf-time');
+    const customColor = document.getElementById('input-kf-custom-color');
+    const colorHexLbl = document.getElementById('lbl-kf-color-hex');
+    const bgSelect = document.getElementById('select-kf-bg-mode');
+    const blurSlider = document.getElementById('step3-slider-blur');
+    const scaleSlider = document.getElementById('step3-slider-scale');
+    const blurLbl = document.getElementById('lbl-blur-val');
+    const scaleLbl = document.getElementById('lbl-scale-val');
+    const shakeChk = document.getElementById('step3-chk-shake');
+
+    if (titleEl) titleEl.textContent = `💎 Keyframe #${state.selectedKeyframeIndex + 1} (${formatTime(kf.time)})`;
+    if (inputTime) inputTime.value = formatTime(kf.time);
+    if (customColor) customColor.value = kf.color || '#8acf00';
+    if (colorHexLbl) colorHexLbl.textContent = kf.color || '#8acf00';
+    if (bgSelect) bgSelect.value = kf.bgMode || 'solid';
+    if (blurSlider) blurSlider.value = kf.blur || 6;
+    if (scaleSlider) scaleSlider.value = kf.scale || 1.5;
+    if (blurLbl) blurLbl.textContent = `${kf.blur || 6}px`;
+    if (scaleLbl) scaleLbl.textContent = `${kf.scale || 1.5}x`;
+    if (shakeChk) shakeChk.checked = kf.shake !== false;
+
+    // Palette swatches active
+    document.querySelectorAll('.ve-color-grid .palette-swatch-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.palette === kf.palette);
+    });
+
+    // Layout buttons active
+    document.querySelectorAll('.ve-layout-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.layout === (kf.layout || 'impact'));
+    });
+
+    // Variant buttons active
+    document.querySelectorAll('.ve-var-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.variant === (kf.variant || 'heavy'));
+    });
+  }
+
+  function addKeyframeAtCurrentTime() {
+    if (!state.currentTrack) return;
+    const curT = Math.round(state.currentTime * 100) / 100;
+    const kfs = state.currentTrack.effects.keyframes;
+
+    // Check if keyframe already exists nearby
+    const existing = kfs.findIndex(k => Math.abs(k.time - curT) < 0.2);
+    if (existing >= 0) {
+      state.selectedKeyframeIndex = existing;
+    } else {
+      const prevKf = getActiveKeyframeAtTime(curT) || {};
+      const newKf = {
+        time: curT,
+        palette: prevKf.palette || 'lime',
+        color: prevKf.color || '#8acf00',
+        bgMode: prevKf.bgMode || 'radial-glow',
+        layout: prevKf.layout || 'impact',
+        variant: prevKf.variant || 'heavy',
+        blur: prevKf.blur || 6,
+        scale: prevKf.scale || 1.5,
+        shake: prevKf.shake !== false
+      };
+      kfs.push(newKf);
+      kfs.sort((a, b) => a.time - b.time);
+      state.selectedKeyframeIndex = kfs.indexOf(newKf);
+    }
+
+    renderStep3Effects();
+  }
+
+  function deleteSelectedKeyframe() {
+    const kfs = state.currentTrack.effects.keyframes;
+    if (!kfs || kfs.length <= 1) {
+      alert('Debe haber al menos 1 keyframe para la estética de la canción.');
+      return;
+    }
+    kfs.splice(state.selectedKeyframeIndex, 1);
+    state.selectedKeyframeIndex = Math.max(0, state.selectedKeyframeIndex - 1);
+    renderStep3Effects();
+  }
+
+  function autoGenerateSectionKeyframes() {
+    if (!state.currentTrack || !Array.isArray(state.currentTrack.lines) || !state.currentTrack.lines.length) return;
+    const lines = state.currentTrack.lines;
+    const dur = state.duration || 133;
+    const palettes = ['lime', 'purple', 'cyan', 'red', 'yellow', 'ink'];
+    const colors = ['#8acf00', '#9d4edd', '#00f5d4', '#ff0055', '#ffbe0b', '#0a0a0a'];
+    const layouts = ['impact', 'center', 'spread', 'scribble'];
+    const variants = ['heavy', 'lean', 'wide', 'plain'];
+    const bgModes = ['solid', 'radial-glow', 'brat-matrix', 'crt-scanlines'];
+
+    const newKfs = [];
+    const stepLines = Math.max(2, Math.floor(lines.length / 5));
+
+    for (let i = 0; i < lines.length; i += stepLines) {
+      const line = lines[i];
+      const pIdx = (i / stepLines) % palettes.length;
+      newKfs.push({
+        time: Math.round(line.time * 100) / 100,
+        palette: palettes[pIdx],
+        color: colors[pIdx],
+        bgMode: bgModes[pIdx % bgModes.length],
+        layout: layouts[pIdx % layouts.length],
+        variant: variants[pIdx % variants.length],
+        blur: 6 + (pIdx % 4) * 2,
+        scale: 1.4 + (pIdx % 3) * 0.2,
+        shake: true
+      });
+    }
+
+    state.currentTrack.effects.keyframes = newKfs;
+    state.selectedKeyframeIndex = 0;
+    renderStep3Effects();
+    alert(`✨ Se auto-generaron ${newKfs.length} keyframes de color y escena a lo largo de la canción.`);
+  }
+
+  function getActiveKeyframeAtTime(time) {
+    if (!state.currentTrack || !state.currentTrack.effects) return null;
+    const kfs = state.currentTrack.effects.keyframes || [];
+    if (!kfs.length) return null;
+
+    let active = kfs[0];
+    for (let i = 0; i < kfs.length; i++) {
+      if (time >= kfs[i].time) {
+        active = kfs[i];
+      } else {
+        break;
+      }
+    }
+    return active;
+  }
+
+  function updateLiveCinemaStageFromKeyframes() {
+    const stage = document.getElementById('step3-cinema-stage');
+    const badge = document.getElementById('stage-active-kf-badge');
+    if (!stage) return;
+
+    const kf = getActiveKeyframeAtTime(state.currentTime);
+    if (!kf) return;
+
+    stage.setAttribute('data-lyrics-theme', 'brat');
+    stage.setAttribute('data-brat-palette', kf.palette || 'lime');
+    stage.setAttribute('data-bg-mode', kf.bgMode || 'solid');
+    stage.setAttribute('data-layout', kf.layout || 'impact');
+    stage.setAttribute('data-variant', kf.variant || 'heavy');
+
+    if (kf.color) {
+      stage.style.setProperty('--stage-accent-color', kf.color);
+    }
+
+    if (badge) {
+      badge.textContent = `KF: ${(kf.palette || 'custom').toUpperCase()} ${kf.color || ''}`;
+      badge.style.borderColor = kf.color || '#8acf00';
+      badge.style.color = kf.color || '#8acf00';
+    }
   }
 
   function addBassBeatStamp() {
@@ -686,6 +1055,19 @@
             updateDockProgress(curT);
             checkAndHighlightLiveVerse(curT);
             checkAndTriggerBeats(curT);
+
+            // Actualización fluida de la línea de tiempo del editor de video en el Paso 3
+            if (state.activeStep === 3) {
+              const dur = Math.max(10, state.duration || 133);
+              const playhead = document.getElementById('ve-playhead-needle');
+              const tcDigits = document.getElementById('ve-tc-display');
+              if (playhead) {
+                const pct = (curT / dur) * 100;
+                playhead.style.left = `${Math.min(100, Math.max(0, pct))}%`;
+              }
+              if (tcDigits) tcDigits.textContent = formatTime(curT);
+              updateLiveCinemaStageFromKeyframes();
+            }
           }
         } catch (_) {}
       }
@@ -984,22 +1366,138 @@
     return result;
   }
 
-  function distributeWordsForLine(text, startTime, endTime) {
-    const rawWords = (text || '').trim().split(/\s+/).filter(Boolean);
-    if (rawWords.length === 0) return [];
+  /* =========================================================================
+     8.5. MOTOR FONÉTICO Y DE FRASES DE AURAMUSIC (PORT COMPLETO)
+     ========================================================================= */
 
-    const totalDur = Math.max(0.6, endTime - startTime);
-    const charWeights = rawWords.map(w => Math.max(1, w.length));
-    const totalChars = charWeights.reduce((a, b) => a + b, 0);
+  const attachedWords = new Set([
+    'a', 'al', 'de', 'del', 'el', 'la', 'los', 'las', 'un', 'una', 'en', 'con', 'que',
+    'mi', 'tu', 'su', 'me', 'te', 'se', 'nos', 'y', 'o', 'the', 'a', 'an', 'of', 'to',
+    'and', 'or', 'my', 'your', 'in', 'on', 'at'
+  ]);
+  const clauseStarters = /^(pero|aunque|porque|cuando|mientras|entonces|but|although|because|when|while|then|and|y)$/iu;
 
-    let curStart = startTime;
-    return rawWords.map((word, i) => {
-      const share = (charWeights[i] / totalChars) * totalDur;
-      const wStart = Math.round(curStart * 100) / 100;
-      const wEnd = Math.round((curStart + share) * 100) / 100;
-      curStart += share;
-      return { word, start: wStart, end: wEnd };
+  function tokenize(text) {
+    const value = String(text || '').trim();
+    if (!value) return [];
+    if (!/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}]/u.test(value)) {
+      return value.match(/\S+\s*/gu) || [];
+    }
+    try {
+      const result = [];
+      let pending = '';
+      for (const part of new Intl.Segmenter(undefined, { granularity: 'word' }).segment(value)) {
+        if (part.isWordLike) {
+          result.push(pending + part.segment);
+          pending = '';
+        } else if (!result.length) {
+          pending += part.segment;
+        } else {
+          result[result.length - 1] += part.segment;
+        }
+      }
+      if (pending) result.push(pending);
+      return result;
+    } catch (_) {
+      return value.match(/\S+\s*/gu) || [];
+    }
+  }
+
+  function calculateSyllableWeight(token) {
+    const clean = String(token || '').normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    if (!clean) return 0.6;
+    if (/[^\p{Script=Latin}]/u.test(clean)) return Math.max(1, Array.from(clean).length);
+    const vowels = clean.normalize('NFD').replace(/\p{M}/gu, '').match(/[aeiouyáéíóú]+/gi);
+    let syllables = Math.max(1, vowels ? vowels.length : clean.length / 3);
+    if (/[aeoáéíóú][íú]|[íú][aeoáéíóú]/iu.test(token)) syllables++;
+    return Math.max(0.5, syllables * (attachedWords.has(clean) ? 0.65 : 1.0));
+  }
+
+  function profilePacing(lines) {
+    return (lines || []).map((line, idx) => {
+      let span = (lines[idx + 1] ? lines[idx + 1].time : (line.time + 3.5)) - line.time;
+      let occupied = 0.88;
+      const precise = Array.isArray(line.words) ? line.words.filter(w => !w.estimated && Number.isFinite(w.start)) : [];
+      if (precise.length > 1) {
+        const first = precise[0].start;
+        const last = precise[precise.length - 1];
+        const vocalSpan = (last.end > last.start ? last.end : last.start + 0.4) - first;
+        if (vocalSpan > 0.1) { span = vocalSpan; occupied = 1.0; }
+      }
+      const units = tokenize(line.text).reduce((sum, tok) => sum + calculateSyllableWeight(tok), 0);
+      return (units > 1 && span > 0.2 && span < 12) ? Math.max(0.1, Math.min(0.7, (span * occupied) / units)) : NaN;
     });
+  }
+
+  function estimateWordsForLine(text, startTime, endTime, pace = 0.35) {
+    const tokens = tokenize(text);
+    if (!tokens.length) return [];
+    const weights = tokens.map(calculateSyllableWeight);
+    const units = weights.reduce((s, w) => s + w, 0);
+    const available = (endTime > startTime) ? (endTime - startTime) : (units * pace + 0.4);
+    const duration = Math.min(available * 0.94, Math.max(0.1, units * pace));
+    const pauses = tokens.map((token, idx) => (idx < tokens.length - 1 && /[,;:.!?¿¡][»”"'）)]*\s*$/u.test(token) ? 0.35 : 0));
+    const totalUnits = units + pauses.reduce((s, p) => s + p, 0);
+
+    let time = startTime;
+    return tokens.map((tok, idx) => {
+      const wStart = Math.round(time * 100) / 100;
+      const wEnd = Math.round((wStart + (duration * weights[idx]) / totalUnits) * 100) / 100;
+      time = wEnd + (duration * pauses[idx]) / totalUnits;
+      return {
+        word: tok.trim(),
+        start: wStart,
+        end: Math.max(wStart + 0.08, wEnd),
+        estimated: true
+      };
+    });
+  }
+
+  function splitLinePhrases(tokens, words) {
+    if (!words || !words.length) return [];
+    if (words.length <= 4) {
+      return [{
+        startIdx: 0,
+        endIdx: words.length,
+        startTime: words[0].start,
+        endTime: words[words.length - 1].end,
+        words: words
+      }];
+    }
+    const rests = words.slice(0, -1).map((w, idx) => Math.max(0, words[idx + 1].start - w.end));
+    const pauseThreshold = 0.3;
+    const phrases = [];
+    let start = 0;
+    while (start < tokens.length) {
+      let limit = Math.min(tokens.length, start + 7);
+      let best = limit;
+      for (let end = start + 1; end <= limit; end++) {
+        const tok = tokens[end - 1].trim();
+        const next = (tokens[end] || '').trim().toLowerCase();
+        const isSentence = /[.!?¿¡]/.test(tok);
+        const isClause = /[,;:]/.test(tok);
+        const rest = rests[end - 1] || 0;
+        if (end < tokens.length && (isSentence || rest >= pauseThreshold)) { best = end; break; }
+        if (end < tokens.length && isClause && end - start >= 2) { best = end; break; }
+        if (clauseStarters.test(next) && end - start >= 3) { best = end; break; }
+      }
+      const sliceWords = words.slice(start, best);
+      if (sliceWords.length) {
+        phrases.push({
+          startIdx: start,
+          endIdx: best,
+          startTime: sliceWords[0].start,
+          endTime: sliceWords[sliceWords.length - 1].end,
+          words: sliceWords
+        });
+      }
+      start = best;
+    }
+    return phrases;
+  }
+
+  function distributeWordsForLine(text, startTime, endTime) {
+    return estimateWordsForLine(text, startTime, endTime, state.syllablePace || 0.35);
   }
 
   /* =========================================================================
@@ -1178,43 +1676,128 @@
   }
 
   /* =========================================================================
-     11. EVENT LISTENERS
+     9.5. INSTANT YOUTUBE OEMBED RESOLVER & AUTO-LRCLIB
+     ========================================================================= */
+
+  async function resolveYouTubeMetadata(val) {
+    if (!val) return null;
+    let videoId = val.trim();
+    const match = val.match(/(?:v=|v\/|embed\/|youtu\.be\/|watch\?v=)([a-zA-Z0-9_-]{11})/);
+    if (match) videoId = match[1];
+
+    if (!videoId || videoId.length !== 11) return null;
+
+    const banner = document.getElementById('yt-auto-meta-banner');
+    const bannerText = document.getElementById('meta-detect-text');
+    const titleInput = document.getElementById('input-add-title');
+    const artistInput = document.getElementById('input-add-artist');
+    const previewImg = document.getElementById('add-cover-preview-img');
+    const previewTitle = document.getElementById('add-preview-title');
+    const previewArtist = document.getElementById('add-preview-artist');
+    const ytInput = document.getElementById('input-add-yt');
+
+    if (ytInput && val.includes('youtube.com') && !val.includes('music.youtube.com')) {
+      ytInput.value = `https://music.youtube.com/watch?v=${videoId}`;
+    }
+
+    if (banner) {
+      banner.style.display = 'flex';
+      if (bannerText) bannerText.textContent = `⚡ Detectando canción desde YouTube... (ID: ${videoId})`;
+    }
+    if (previewImg) previewImg.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+    let meta = null;
+    try {
+      const res = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`);
+      if (res.ok) {
+        const d = await res.json();
+        if (d && d.title && !d.error) meta = d;
+      }
+    } catch (_) {}
+
+    if (!meta) {
+      try {
+        const res2 = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+        if (res2.ok) {
+          const d2 = await res2.json();
+          if (d2 && d2.title) meta = d2;
+        }
+      } catch (_) {}
+    }
+
+    let detectedTitle = '';
+    let detectedArtist = '';
+
+    if (meta) {
+      let rawTitle = meta.title || '';
+      let rawAuthor = meta.author_name || '';
+
+      rawAuthor = rawAuthor
+        .replace(/\s*-\s*Topic/i, '')
+        .replace(/VEVO$/i, '')
+        .trim();
+
+      let cleanTitle = rawTitle
+        .replace(/\s*[\(\[](?:official\s*(?:music\s*)?video|video\s*oficial|visualizer|lyric\s*video|audio\s*(?:oficial)?|lyrics?|remix|hd|4k|videoclip|letra|en\s*vivo|live)[\)\]]/gi, '')
+        .replace(/\s*-\s*(?:video\s*oficial|official\s*(?:music\s*)?video|visualizer|audio\s*oficial|audio|videoclip|letra)/gi, '')
+        .replace(/["'“”«»]/g, '')
+        .trim();
+
+      if (cleanTitle.includes(' - ')) {
+        const parts = cleanTitle.split(' - ');
+        detectedArtist = parts[0].trim();
+        detectedTitle = parts.slice(1).join(' - ').trim();
+      } else {
+        detectedTitle = cleanTitle;
+        detectedArtist = rawAuthor;
+      }
+    } else {
+      detectedTitle = titleInput?.value || 'Nueva Canción';
+      detectedArtist = artistInput?.value || '';
+    }
+
+    if (titleInput && detectedTitle) titleInput.value = detectedTitle;
+    if (artistInput && detectedArtist) artistInput.value = detectedArtist;
+    if (previewTitle && detectedTitle) previewTitle.textContent = detectedTitle;
+    if (previewArtist && detectedArtist) previewArtist.textContent = detectedArtist || 'YouTube Music';
+
+    // Auto-buscar letra en LRCLIB al instante
+    if (bannerText) {
+      bannerText.textContent = `✨ "${detectedTitle}" (${detectedArtist || 'Artista'}) detectada. ⏳ Buscando letra en LRCLIB...`;
+    }
+
+    const lrclibRes = await fetchLrclibLyrics(detectedTitle, detectedArtist, 180);
+    if (lrclibRes && lrclibRes.lines && lrclibRes.lines.length > 0) {
+      state.pendingAutoLyrics = lrclibRes.lines;
+      if (bannerText) {
+        bannerText.innerHTML = `✅ <strong>¡Letra ${lrclibRes.isSynced ? 'sincronizada' : 'texto plano'} lista!</strong> (${lrclibRes.lines.length} versos encontrados)`;
+      }
+      const feedback = document.getElementById('modal-lrclib-feedback');
+      if (feedback) {
+        feedback.style.display = 'block';
+        feedback.style.color = '#aaff00';
+        feedback.innerHTML = `✅ Letra cargada automáticamente (${lrclibRes.lines.length} versos) desde LRCLIB.`;
+      }
+    } else {
+      if (bannerText) {
+        bannerText.textContent = `⚠️ Canción detectada: "${detectedTitle}". No se halló letra en LRCLIB (puedes pegarla raw).`;
+      }
+    }
+
+    return { videoId, title: detectedTitle, artist: detectedArtist, lyrics: state.pendingAutoLyrics };
+  }
+
+  /* =========================================================================
+     10. EVENT LISTENERS
      ========================================================================= */
 
   function initEventListeners() {
-    // Brand home click
+    // Brand header returns to Library
     document.getElementById('btn-brand-home')?.addEventListener('click', () => switchViewMode('library'));
     document.getElementById('btn-back-to-library')?.addEventListener('click', () => switchViewMode('library'));
 
-    // Top pipeline steps
-    document.querySelectorAll('.pipeline-steps .step-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const step = parseInt(btn.dataset.step, 10);
-        switchStep(step);
-      });
-    });
-
-    // Step navigation buttons
-    document.getElementById('btn-goto-step-2')?.addEventListener('click', () => switchStep(2));
-    document.getElementById('btn-goto-step-3')?.addEventListener('click', () => switchStep(3));
-    document.getElementById('btn-back-to-step-1')?.addEventListener('click', () => switchStep(1));
-    document.getElementById('btn-back-to-step-2')?.addEventListener('click', () => switchStep(2));
-
-    // Save & Export
-    document.getElementById('btn-save-current-track')?.addEventListener('click', saveCurrentTrackToDatabase);
-    document.getElementById('btn-export-track-modal')?.addEventListener('click', openExportModal);
-    document.getElementById('btn-step3-export')?.addEventListener('click', () => {
-      saveCurrentTrackToDatabase();
-      openExportModal();
-    });
-
-    // Modals
+    // Header "+ Nueva Canción"
     const modalAdd = document.getElementById('modal-add-song');
-    const modalExport = document.getElementById('modal-export');
-
-    document.getElementById('card-trigger-add-song')?.addEventListener('click', () => {
-      if (modalAdd) modalAdd.style.display = 'flex';
-    });
     document.getElementById('btn-header-new-song')?.addEventListener('click', () => {
       if (modalAdd) modalAdd.style.display = 'flex';
     });
@@ -1224,7 +1807,29 @@
     document.getElementById('btn-cancel-add-song')?.addEventListener('click', () => {
       if (modalAdd) modalAdd.style.display = 'none';
     });
+
+    // Stepper header navigation buttons
+    document.querySelectorAll('.pipeline-steps .step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const stepNum = parseInt(btn.dataset.step, 10);
+        switchStep(stepNum);
+      });
+    });
+
+    // Step footer navigation buttons
+    document.getElementById('btn-goto-step-2')?.addEventListener('click', () => switchStep(2));
+    document.getElementById('btn-back-to-step-1')?.addEventListener('click', () => switchStep(1));
+    document.getElementById('btn-goto-step-3')?.addEventListener('click', () => switchStep(3));
+    document.getElementById('btn-back-to-step-2')?.addEventListener('click', () => switchStep(2));
+
+    // Export Modal open/close
+    const modalExport = document.getElementById('modal-export-data');
+    document.getElementById('btn-header-export')?.addEventListener('click', openExportModal);
+    document.getElementById('btn-step3-export')?.addEventListener('click', openExportModal);
     document.getElementById('btn-close-modal-export')?.addEventListener('click', () => {
+      if (modalExport) modalExport.style.display = 'none';
+    });
+    document.getElementById('btn-modal-export-close-btn')?.addEventListener('click', () => {
       if (modalExport) modalExport.style.display = 'none';
     });
 
@@ -1239,33 +1844,25 @@
       }
     });
 
-    // YouTube URL detection in Modal
+    // Instant YouTube URL Detection in Modal
     const ytInput = document.getElementById('input-add-yt');
     const titleInput = document.getElementById('input-add-title');
     const artistInput = document.getElementById('input-add-artist');
-    const previewImg = document.getElementById('add-cover-preview-img');
-    const previewTitle = document.getElementById('add-preview-title');
-    const previewArtist = document.getElementById('add-preview-artist');
 
     const handleYtInput = () => {
-      let val = (ytInput?.value || '').trim();
-      let videoId = val;
-      const match = val.match(/(?:v=|v\/|embed\/|youtu\.be\/|watch\?v=)([a-zA-Z0-9_-]{11})/);
-      if (match) videoId = match[1];
+      const val = (ytInput?.value || '').trim();
+      if (state.debounceDetectTimer) clearTimeout(state.debounceDetectTimer);
 
-      if (videoId.length === 11) {
-        // Asegurar que siempre se muestre como enlace a YouTube Music
-        if (val.includes('youtube.com') && !val.includes('music.youtube.com')) {
-          ytInput.value = `https://music.youtube.com/watch?v=${videoId}`;
-        }
-        if (previewImg) previewImg.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-        if (previewTitle) previewTitle.textContent = titleInput?.value || 'Canción Detectada';
-        if (previewArtist) previewArtist.textContent = artistInput?.value || 'YouTube Music';
-      }
+      state.debounceDetectTimer = setTimeout(() => {
+        resolveYouTubeMetadata(val);
+      }, 350);
     };
 
     ytInput?.addEventListener('input', handleYtInput);
-    document.getElementById('btn-detect-yt')?.addEventListener('click', handleYtInput);
+    ytInput?.addEventListener('paste', () => setTimeout(handleYtInput, 50));
+    document.getElementById('btn-detect-yt')?.addEventListener('click', () => {
+      resolveYouTubeMetadata(ytInput?.value || '');
+    });
 
     // Modal: Probar búsqueda en LRCLIB al instante
     document.getElementById('btn-modal-test-lrclib')?.addEventListener('click', async () => {
@@ -1287,6 +1884,7 @@
 
       const res = await fetchLrclibLyrics(title, artist, 180);
       if (res && res.lines && res.lines.length > 0) {
+        state.pendingAutoLyrics = res.lines;
         feedback.style.color = '#aaff00';
         feedback.innerHTML = `✅ ¡Letra ${res.isSynced ? 'sincronizada' : 'en texto plano'} encontrada! (<strong>${res.lines.length} versos</strong>) — <em>${escapeHtml(res.foundTrackName)}</em> de <em>${escapeHtml(res.foundArtistName || 'Artista')}</em>`;
         if (res.foundTrackName && (!titleInput.value || titleInput.value.toLowerCase() === 'nueva canción')) {
@@ -1305,7 +1903,7 @@
     document.getElementById('btn-submit-create-song')?.addEventListener('click', async () => {
       const btn = document.getElementById('btn-submit-create-song');
       const val = (ytInput?.value || '').trim();
-      let videoId = 'W22T_5YqH94';
+      let videoId = 'WJW-VvmRKsE';
       const match = val.match(/(?:v=|v\/|embed\/|youtu\.be\/|watch\?v=)([a-zA-Z0-9_-]{11})/);
       if (match) videoId = match[1];
       else if (val.length === 11) videoId = val;
@@ -1316,23 +1914,27 @@
 
       let fetchedLines = [];
       if (useLrclib) {
-        if (btn) {
-          btn.disabled = true;
-          btn.innerHTML = `<span>⏳ Consultando LRCLIB...</span>`;
-        }
-        const lrclibRes = await fetchLrclibLyrics(title, artist, 180);
-        if (lrclibRes && lrclibRes.lines && lrclibRes.lines.length > 0) {
-          fetchedLines = lrclibRes.lines;
-          if (lrclibRes.foundTrackName && (!titleInput.value || titleInput.value.toLowerCase() === 'nueva canción')) {
-            title = lrclibRes.foundTrackName;
+        if (state.pendingAutoLyrics && state.pendingAutoLyrics.length > 0) {
+          fetchedLines = state.pendingAutoLyrics;
+        } else {
+          if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<span>⏳ Consultando LRCLIB...</span>`;
           }
-          if (lrclibRes.foundArtistName && (!artistInput.value || artistInput.value.toLowerCase() === 'artista')) {
-            artist = lrclibRes.foundArtistName;
+          const lrclibRes = await fetchLrclibLyrics(title, artist, 180);
+          if (lrclibRes && lrclibRes.lines && lrclibRes.lines.length > 0) {
+            fetchedLines = lrclibRes.lines;
+            if (lrclibRes.foundTrackName && (!titleInput.value || titleInput.value.toLowerCase() === 'nueva canción')) {
+              title = lrclibRes.foundTrackName;
+            }
+            if (lrclibRes.foundArtistName && (!artistInput.value || artistInput.value.toLowerCase() === 'artista')) {
+              artist = lrclibRes.foundArtistName;
+            }
           }
-        }
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = `<span>Crear y Abrir en Editor</span>`;
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<span>Crear y Abrir en Editor</span>`;
+          }
         }
       }
 
@@ -1342,17 +1944,24 @@
         videoId,
         duration: 180,
         lines: fetchedLines,
+        humanReviewed: false,
         effects: {
           theme: 'brat',
           bassBeats: [],
           palette: 'lime',
           blur: 6,
           scale: 1.5,
-          shake: true
+          shake: true,
+          keyframes: [
+            { time: 0, palette: 'lime', color: '#8acf00', bgMode: 'solid', layout: 'impact', variant: 'heavy', blur: 6, scale: 1.5, shake: true },
+            { time: 24.0, palette: 'purple', color: '#9d4edd', bgMode: 'radial-glow', layout: 'spread', variant: 'lean', blur: 8, scale: 1.4, shake: true },
+            { time: 55.0, palette: 'cyan', color: '#00f5d4', bgMode: 'brat-matrix', layout: 'scribble', variant: 'wide', blur: 10, scale: 1.8, shake: true }
+          ]
         }
       };
 
       if (modalAdd) modalAdd.style.display = 'none';
+      state.pendingAutoLyrics = null;
       state.libraryTracks.unshift(newTrack);
       openTrackInEditor(newTrack, 1);
     });
@@ -1389,7 +1998,7 @@
     document.getElementById('btn-tap-verse-stamp')?.addEventListener('click', stampCurrentLiveVerse);
     document.getElementById('btn-tap-beat-stamp')?.addEventListener('click', addBassBeatStamp);
 
-    // Global Keyboard Shortcuts (Space for Verse Stamp, B for Beat, Left/Right for Seek)
+    // Global Keyboard Shortcuts (Space for Verse Stamp, B for Beat, K for Keyframe, Left/Right for Seek)
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
@@ -1403,6 +2012,11 @@
       } else if (e.code === 'KeyB') {
         e.preventDefault();
         addBassBeatStamp();
+      } else if (e.code === 'KeyK') {
+        e.preventDefault();
+        if (state.activeStep === 3) {
+          addKeyframeAtCurrentTime();
+        }
       } else if (e.code === 'ArrowLeft') {
         e.preventDefault();
         seekTo(state.currentTime - 3);
@@ -1455,7 +2069,26 @@
       if (rawDrawer) rawDrawer.style.display = 'none';
     });
 
-    // Step 2 Verse Dropdown change
+    // Step 2 Listeners: Human Review, AuraMusic Engine & Pace Slider
+    document.getElementById('btn-toggle-human-review')?.addEventListener('click', toggleHumanReview);
+    document.getElementById('btn-reanalyze-auramusic')?.addEventListener('click', reanalyzeWithAuraMusicEngine);
+
+    document.getElementById('slider-syllable-pace')?.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value) || 0.35;
+      state.syllablePace = val;
+      const lbl = document.getElementById('lbl-pace-val');
+      if (lbl) lbl.textContent = `${val.toFixed(2)}s`;
+
+      if (state.currentTrack && state.currentTrack.lines[state.selectedVerseIndex]) {
+        const l = state.currentTrack.lines[state.selectedVerseIndex];
+        const nextTime = (state.selectedVerseIndex < state.currentTrack.lines.length - 1)
+          ? state.currentTrack.lines[state.selectedVerseIndex + 1].time
+          : (l.time + 3.5);
+        l.words = estimateWordsForLine(l.text, l.time, nextTime, val);
+        renderStep2WordsStage();
+      }
+    });
+
     document.getElementById('words-verse-dropdown')?.addEventListener('change', (e) => {
       state.selectedVerseIndex = parseInt(e.target.value, 10);
       renderStep2WordsStage();
@@ -1467,49 +2100,135 @@
       }
     });
 
-    document.getElementById('btn-auto-syllables-all')?.addEventListener('click', () => {
-      if (!state.currentTrack || !state.currentTrack.lines) return;
-      state.currentTrack.lines.forEach((l, idx) => {
-        const nextTime = (idx < state.currentTrack.lines.length - 1) ? state.currentTrack.lines[idx + 1].time : (l.time + 3.5);
-        l.words = distributeWordsForLine(l.text, l.time, nextTime);
-      });
-      renderStep2WordsStage();
-      alert('Palabras distribuidas automáticamente.');
+    // Step 3 Video Editor Keyframe Studio Listeners
+    document.getElementById('btn-add-keyframe-now')?.addEventListener('click', addKeyframeAtCurrentTime);
+    document.getElementById('btn-delete-selected-kf')?.addEventListener('click', deleteSelectedKeyframe);
+    document.getElementById('btn-auto-section-keyframes')?.addEventListener('click', autoGenerateSectionKeyframes);
+
+    document.getElementById('btn-kf-nudge-back')?.addEventListener('click', () => {
+      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+      if (kf) {
+        kf.time = Math.max(0, Math.round((kf.time - 0.2) * 100) / 100);
+        state.currentTrack.effects.keyframes.sort((a, b) => a.time - b.time);
+        renderStep3Effects();
+      }
     });
 
-    // Step 3 Palette Swatches
-    document.querySelectorAll('.palette-swatch-btn').forEach(btn => {
+    document.getElementById('btn-kf-nudge-fwd')?.addEventListener('click', () => {
+      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+      if (kf) {
+        kf.time = Math.round((kf.time + 0.2) * 100) / 100;
+        state.currentTrack.effects.keyframes.sort((a, b) => a.time - b.time);
+        renderStep3Effects();
+      }
+    });
+
+    document.getElementById('input-kf-time')?.addEventListener('change', (e) => {
+      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+      if (kf) {
+        const parts = e.target.value.split(':');
+        let sec = parseFloat(e.target.value);
+        if (parts.length === 2) {
+          sec = parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+        }
+        if (!isNaN(sec) && sec >= 0) {
+          kf.time = Math.round(sec * 100) / 100;
+          state.currentTrack.effects.keyframes.sort((a, b) => a.time - b.time);
+          renderStep3Effects();
+        }
+      }
+    });
+
+    // Video Editor Color Swatches
+    document.querySelectorAll('.ve-color-grid .palette-swatch-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const pal = btn.dataset.palette;
-        if (state.currentTrack) state.currentTrack.effects.palette = pal;
-        renderStep3Effects();
+        const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+        if (kf) {
+          kf.palette = btn.dataset.palette;
+          kf.color = btn.dataset.hex;
+          renderStep3Effects();
+        }
       });
     });
 
-    // Step 3 Theme Radios
-    document.querySelectorAll('input[name="preview-theme"]').forEach(r => {
-      r.addEventListener('change', (e) => {
-        if (state.currentTrack) state.currentTrack.effects.theme = e.target.value;
-        renderStep3Effects();
+    // Custom Color Input
+    document.getElementById('input-kf-custom-color')?.addEventListener('input', (e) => {
+      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+      if (kf) {
+        kf.color = e.target.value;
+        kf.palette = 'custom';
+        const hexLbl = document.getElementById('lbl-kf-color-hex');
+        if (hexLbl) hexLbl.textContent = e.target.value;
+        updateLiveCinemaStageFromKeyframes();
+      }
+    });
+
+    // Background Mode
+    document.getElementById('select-kf-bg-mode')?.addEventListener('change', (e) => {
+      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+      if (kf) {
+        kf.bgMode = e.target.value;
+        updateLiveCinemaStageFromKeyframes();
+      }
+    });
+
+    // Layout Buttons
+    document.querySelectorAll('.ve-layout-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+        if (kf) {
+          kf.layout = btn.dataset.layout;
+          renderStep3Effects();
+        }
       });
+    });
+
+    // Variant Buttons
+    document.querySelectorAll('.ve-var-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+        if (kf) {
+          kf.variant = btn.dataset.variant;
+          renderStep3Effects();
+        }
+      });
+    });
+
+    // Interactive Timeline Viewport Click to Seek
+    const tlViewport = document.getElementById('ve-timeline-viewport');
+    tlViewport?.addEventListener('click', (e) => {
+      const rect = tlViewport.getBoundingClientRect();
+      const clickX = e.clientX - rect.left - 85; // 85px is track label width
+      const laneWidth = rect.width - 85;
+      if (clickX >= 0 && laneWidth > 0) {
+        const pct = clickX / laneWidth;
+        const targetTime = pct * (state.duration || 133);
+        seekTo(targetTime);
+      }
     });
 
     // Step 3 Sliders
     document.getElementById('step3-slider-blur')?.addEventListener('input', (e) => {
       const val = parseInt(e.target.value, 10);
-      if (state.currentTrack) state.currentTrack.effects.blur = val;
+      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+      if (kf) kf.blur = val;
       const lbl = document.getElementById('lbl-blur-val');
       if (lbl) lbl.textContent = `${val}px`;
+      updateLiveCinemaStageFromKeyframes();
     });
 
     document.getElementById('step3-slider-scale')?.addEventListener('input', (e) => {
       const val = parseFloat(e.target.value);
-      if (state.currentTrack) state.currentTrack.effects.scale = val;
+      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+      if (kf) kf.scale = val;
       const lbl = document.getElementById('lbl-scale-val');
       if (lbl) lbl.textContent = `${val}x`;
+      updateLiveCinemaStageFromKeyframes();
     });
 
     document.getElementById('step3-chk-shake')?.addEventListener('change', (e) => {
+      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+      if (kf) kf.shake = e.target.checked;
       if (state.currentTrack) state.currentTrack.effects.shake = e.target.checked;
     });
 

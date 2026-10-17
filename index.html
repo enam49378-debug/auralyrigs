@@ -290,147 +290,242 @@
         </div>
 
         <!-- ===================================================================
-             PASO 2: FRASES Y PALABRAS (KARAOKE PALABRA POR PALABRA)
+             PASO 2: FRASES Y PALABRAS (MOTOR AURAMUSIC & REVISIÓN HUMANA)
              =================================================================== -->
         <div class="step-view" id="step-view-2" style="display: none;">
           <div class="step-view-header">
             <div>
               <h2>PASO 2: AFINACIÓN DE <span class="accent-lime">FRASES & PALABRAS</span></h2>
-              <p>Divide los versos en palabras y sílabas con tiempo de inicio y fin para el efecto karaoke.</p>
+              <p>Motor de Fonética y Frases de AuraMusic asistido por Revisión Humana para sincronización perfecta.</p>
             </div>
             <div class="step-view-tools">
-              <button id="btn-auto-syllables-all" class="btn-secondary-micro">
-                🪄 Distribuir Palabras Automáticamente
+              <button id="btn-toggle-human-review" class="btn-human-review" title="Marcar esta canción como revisada por humano">
+                <span class="review-icon">🛡️</span>
+                <span id="lbl-human-review-text">Marcar como Verificado por Humano</span>
+              </button>
+              <button id="btn-reanalyze-auramusic" class="btn-secondary-micro">
+                🪄 Re-analizar con AuraMusic AI
               </button>
             </div>
           </div>
 
-          <!-- Selected Verse Selector -->
+          <!-- AuraMusic Engine Bar: Selector, Vocal Profile & Pace Slider -->
           <div class="words-verse-selector-bar">
-            <label>Verso Seleccionado:</label>
-            <select id="words-verse-dropdown">
-              <!-- Populated dynamically -->
-            </select>
-            <div class="verse-type-pill-box">
-              <label>Tipo de Vocal:</label>
-              <select id="verse-vocal-type">
-                <option value="vocal">🎤 Vocal (Canto Lírico)</option>
-                <option value="spoken">🗣️ Spoken (Rap / Frase Hablada)</option>
+            <div class="verse-selector-group">
+              <label>Verso Seleccionado:</label>
+              <select id="words-verse-dropdown">
+                <!-- Populated dynamically -->
               </select>
+            </div>
+            <div class="verse-type-pill-box">
+              <label>Estilo de Canto:</label>
+              <select id="verse-vocal-type">
+                <option value="vocal">🎤 Vocal (Melódico / Canto)</option>
+                <option value="spoken">🗣️ Spoken (Rap / Frase Rápida)</option>
+                <option value="whisper">🤫 Susurro / Íntimo</option>
+              </select>
+            </div>
+            <div class="verse-pace-control">
+              <label>Tempo / Ritmo de Sílabas: <strong id="lbl-pace-val">0.35s</strong></label>
+              <div class="pace-slider-wrap">
+                <input type="range" id="slider-syllable-pace" min="0.15" max="0.65" step="0.05" value="0.35" />
+                <span class="pace-tag-hint">Rap ⚡ ─── Estándar ─── Balada 🎙️</span>
+              </div>
             </div>
           </div>
 
-          <!-- Words Syllable Grid Stage -->
+          <!-- AuraMusic Phrase & Word Syllable Stage -->
           <div class="words-syllable-stage" id="step2-words-stage">
-            <!-- Injected by studio.js -->
+            <!-- Injected dynamically by studio.js with phrase cards and word chips -->
           </div>
 
           <div class="step-view-footer">
             <button class="btn-secondary" id="btn-back-to-step-1">← Volver a Versos</button>
-            <button class="btn-primary-small" id="btn-goto-step-3">Continuar a Efectos & Ritmo (Brat) →</button>
+            <button class="btn-primary-small" id="btn-goto-step-3">Continuar a Editor de Video & Keyframes →</button>
           </div>
         </div>
 
         <!-- ===================================================================
-             PASO 3: EFECTOS & RITMO (BRAT ENGINE & CINEMA PREVIEW)
+             PASO 3: EDITOR DE VIDEO & KEYFRAMES DE COLOR (AURA ENGINE)
              =================================================================== -->
         <div class="step-view" id="step-view-3" style="display: none;">
           <div class="step-view-header">
             <div>
-              <h2>PASO 3: EFECTOS VISUALES & <span class="accent-lime">RITMO BRAT</span></h2>
-              <p>Personaliza la estética tipográfica cinética, las sacudidas de bajos 808 y previsualiza en vivo.</p>
+              <h2>PASO 3: EDITOR DE VIDEO & <span class="accent-lime">KEYFRAMES DE COLOR</span></h2>
+              <p>Control de línea de tiempo estilo After Effects / Premiere: keyframes de paleta, animaciones y ritmos 808.</p>
             </div>
             <div class="step-view-tools">
+              <button id="btn-add-keyframe-now" class="btn-glow-lime">
+                <span>➕ Agregar Keyframe [K]</span>
+              </button>
+              <button id="btn-auto-section-keyframes" class="btn-secondary-micro">
+                ✨ Auto-generar por Secciones
+              </button>
               <button id="btn-step3-clear-beats" class="btn-text-danger">Limpiar Beats</button>
             </div>
           </div>
 
-          <div class="step3-effects-grid">
-            <!-- Controls Column -->
-            <div class="step3-controls-card">
-              <!-- Aesthetic Preset -->
-              <div class="effects-field">
-                <label>Tema Cinemático de AuraMusic:</label>
-                <div class="theme-pill-radios">
-                  <label class="theme-pill-option active">
-                    <input type="radio" name="preview-theme" value="brat" checked />
-                    <span class="pill-dot brat-dot"></span>
-                    <span>Brat Kinetic</span>
-                  </label>
-                  <label class="theme-pill-option">
-                    <input type="radio" name="preview-theme" value="apple" />
-                    <span class="pill-dot apple-dot"></span>
-                    <span>Apple Music Glow</span>
-                  </label>
-                  <label class="theme-pill-option">
-                    <input type="radio" name="preview-theme" value="cyberpunk" />
-                    <span class="pill-dot cyber-dot"></span>
-                    <span>Cyberpunk HUD</span>
-                  </label>
-                  <label class="theme-pill-option">
-                    <input type="radio" name="preview-theme" value="komi" />
-                    <span class="pill-dot komi-dot"></span>
-                    <span>Komi Notebook</span>
-                  </label>
+          <!-- Video Editor Master Layout: Timeline & Inspector Grid -->
+          <div class="video-editor-suite">
+            <!-- Multi-Track Keyframe Timeline -->
+            <div class="ve-timeline-card">
+              <div class="ve-timeline-header">
+                <div class="ve-timeline-timecode">
+                  <span class="ve-tc-badge">TC</span>
+                  <span id="ve-tc-display" class="ve-tc-digits">00:00.00</span>
+                </div>
+                <div class="ve-timeline-actions">
+                  <span class="ve-timeline-legend"><span class="legend-dot color-dot"></span> Color & Fondo</span>
+                  <span class="ve-timeline-legend"><span class="legend-dot scene-dot"></span> Layout Cinético</span>
+                  <span class="ve-timeline-legend"><span class="legend-dot beat-dot"></span> Beats 808</span>
                 </div>
               </div>
 
-              <!-- Brat Palette Selector -->
-              <div class="effects-field" id="step3-brat-palette-box">
-                <label>Paleta de Color Brat:</label>
-                <div class="palette-swatches-grid">
-                  <button class="palette-swatch-btn swatch-lime active" data-palette="lime" title="Lime Green (Original)">Lime</button>
-                  <button class="palette-swatch-btn swatch-white" data-palette="white" title="White / Ink">White</button>
-                  <button class="palette-swatch-btn swatch-red" data-palette="red" title="Red / Blue">Red</button>
-                  <button class="palette-swatch-btn swatch-blue" data-palette="blue" title="Blue / Red">Blue</button>
-                  <button class="palette-swatch-btn swatch-yellow" data-palette="yellow" title="Yellow / Dark">Yellow</button>
-                  <button class="palette-swatch-btn swatch-ink" data-palette="ink" title="OLED Ink Black">Ink</button>
-                </div>
-              </div>
+              <!-- Interactive Timeline Canvas & Tracks -->
+              <div class="ve-timeline-viewport" id="ve-timeline-viewport">
+                <!-- Ruler Bar with Time Notches -->
+                <div class="ve-ruler-track" id="ve-ruler-track"></div>
 
-              <!-- Kinetic Blur & Scale Sliders -->
-              <div class="effects-field">
-                <div class="slider-row">
-                  <label>Desenfoco Cinético en Palabras (Blur): <strong id="lbl-blur-val">6px</strong></label>
-                  <input type="range" id="step3-slider-blur" min="0" max="14" step="1" value="6" />
+                <!-- Playhead Scrub Line -->
+                <div class="ve-playhead-needle" id="ve-playhead-needle" style="left: 0%;">
+                  <div class="needle-head"></div>
+                  <div class="needle-line"></div>
                 </div>
-                <div class="slider-row">
-                  <label>Escala de Palabras Clave: <strong id="lbl-scale-val">1.5x</strong></label>
-                  <input type="range" id="step3-slider-scale" min="1.0" max="2.2" step="0.1" value="1.5" />
-                </div>
-                <div class="checkbox-row">
-                  <label class="custom-chk">
-                    <input type="checkbox" id="step3-chk-shake" checked />
-                    <span>Sacudida de pantalla y destello en cada Golpe de 808</span>
-                  </label>
-                </div>
-              </div>
 
-              <!-- Beats Summary -->
-              <div class="beats-summary-box">
-                <span>Golpes de 808 / Beats Registrados: <strong id="lbl-beats-count">0</strong></span>
-                <small>Presiona la tecla <strong>[B]</strong> mientras escuchas para marcar más golpes</small>
+                <!-- Track 1: Color & Palette Keyframes -->
+                <div class="ve-track-row" id="ve-track-colors">
+                  <div class="ve-track-label">🎨 Color</div>
+                  <div class="ve-track-lane" id="ve-lane-colors"></div>
+                </div>
+
+                <!-- Track 2: Kinetic Layout Keyframes -->
+                <div class="ve-track-row" id="ve-track-layout">
+                  <div class="ve-track-label">⚡ Layout</div>
+                  <div class="ve-track-lane" id="ve-lane-layout"></div>
+                </div>
+
+                <!-- Track 3: 808 Bass Hits -->
+                <div class="ve-track-row" id="ve-track-beats">
+                  <div class="ve-track-label">💥 808</div>
+                  <div class="ve-track-lane" id="ve-lane-beats"></div>
+                </div>
               </div>
             </div>
 
-            <!-- Live Cinema Theater Stage -->
-            <div class="step3-preview-card">
-              <div class="theater-card-header">
-                <span>VISTA PREVIA CINEMÁTICA EN VIVO</span>
-                <span class="badge-fps">AuraMusic Engine 60FPS</span>
+            <!-- Inspector Panel + Live Stage Preview Grid -->
+            <div class="step3-effects-grid">
+              <!-- Keyframe Inspector & Settings Column -->
+              <div class="step3-controls-card ve-inspector-card">
+                <div class="inspector-card-header">
+                  <h4 id="inspector-kf-title">💎 Propiedades del Keyframe</h4>
+                  <button id="btn-delete-selected-kf" class="btn-micro-danger" title="Eliminar este Keyframe">🗑️ Eliminar</button>
+                </div>
+
+                <!-- Keyframe Time and Nudge -->
+                <div class="effects-field">
+                  <div class="kf-time-nudge-row">
+                    <label>Tiempo del Keyframe:</label>
+                    <div class="nudge-controls">
+                      <button class="btn-nudge" id="btn-kf-nudge-back">-0.2s</button>
+                      <input type="text" id="input-kf-time" class="input-kf-time" value="00:00.00" />
+                      <button class="btn-nudge" id="btn-kf-nudge-fwd">+0.2s</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Color Palette & Swatches -->
+                <div class="effects-field">
+                  <label>Color & Ambiente del Escenario:</label>
+                  <div class="palette-swatches-grid ve-color-grid">
+                    <button class="palette-swatch-btn swatch-lime active" data-palette="lime" data-hex="#8acf00">Lime</button>
+                    <button class="palette-swatch-btn swatch-purple" data-palette="purple" data-hex="#9d4edd">Purple</button>
+                    <button class="palette-swatch-btn swatch-cyan" data-palette="cyan" data-hex="#00f5d4">Cyan</button>
+                    <button class="palette-swatch-btn swatch-red" data-palette="red" data-hex="#ff0055">Crimson</button>
+                    <button class="palette-swatch-btn swatch-yellow" data-palette="yellow" data-hex="#ffbe0b">Gold</button>
+                    <button class="palette-swatch-btn swatch-ink" data-palette="ink" data-hex="#0a0a0a">OLED Ink</button>
+                    <button class="palette-swatch-btn swatch-white" data-palette="white" data-hex="#f8fafc">White</button>
+                  </div>
+                  <div class="custom-color-row">
+                    <span>Color Personalizado:</span>
+                    <input type="color" id="input-kf-custom-color" value="#8acf00" />
+                    <span id="lbl-kf-color-hex">#8acf00</span>
+                  </div>
+                </div>
+
+                <!-- Stage Background Style -->
+                <div class="effects-field">
+                  <label>Efecto de Fondo en este Keyframe:</label>
+                  <select id="select-kf-bg-mode" class="select-ve">
+                    <option value="solid">Fondo Puro / OLED Minimal</option>
+                    <option value="radial-glow">Aura Radial Dinámica (Glow)</option>
+                    <option value="brat-matrix">Matriz Cinética Brat (Noise Grid)</option>
+                    <option value="crt-scanlines">Líneas de Escaneo CRT Retro</option>
+                  </select>
+                </div>
+
+                <!-- Kinetic Layout Mode -->
+                <div class="effects-field">
+                  <label>Disposición de Texto (AuraMusic Scene):</label>
+                  <div class="ve-layout-buttons">
+                    <button class="ve-layout-btn active" data-layout="impact">Impact (Gigante)</button>
+                    <button class="ve-layout-btn" data-layout="center">Center</button>
+                    <button class="ve-layout-btn" data-layout="spread">Spread (Expandido)</button>
+                    <button class="ve-layout-btn" data-layout="scribble">Scribble (Caótico)</button>
+                  </div>
+                </div>
+
+                <!-- Font Variant -->
+                <div class="effects-field">
+                  <label>Variante Tipográfica:</label>
+                  <div class="ve-variant-buttons">
+                    <button class="ve-var-btn active" data-variant="heavy">Heavy (Black 900)</button>
+                    <button class="ve-var-btn" data-variant="lean">Lean (Italic)</button>
+                    <button class="ve-var-btn" data-variant="wide">Wide (Espaciado)</button>
+                    <button class="ve-var-btn" data-variant="plain">Plain</button>
+                  </div>
+                </div>
+
+                <!-- Kinetic Blur & Scale Sliders -->
+                <div class="effects-field">
+                  <div class="slider-row">
+                    <label>Desenfoco Cinético (Blur): <strong id="lbl-blur-val">6px</strong></label>
+                    <input type="range" id="step3-slider-blur" min="0" max="14" step="1" value="6" />
+                  </div>
+                  <div class="slider-row">
+                    <label>Escala de Palabras Clave: <strong id="lbl-scale-val">1.5x</strong></label>
+                    <input type="range" id="step3-slider-scale" min="1.0" max="2.2" step="0.1" value="1.5" />
+                  </div>
+                  <div class="checkbox-row">
+                    <label class="custom-chk">
+                      <input type="checkbox" id="step3-chk-shake" checked />
+                      <span>Sacudida de pantalla (Screen Shake) en 808</span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
-              <div class="cinema-live-stage" id="step3-cinema-stage" data-lyrics-theme="brat" data-brat-palette="lime">
-                <div class="stage-center-box" id="step3-stage-center-box">
-                  <div class="stage-active-line" id="step3-stage-active-line">
-                    <span class="tok active">I</span>
-                    <span class="tok">went</span>
-                    <span class="tok">to</span>
-                    <span class="tok">the</span>
-                    <span class="tok focus">city,</span>
-                    <span class="tok">I'm</span>
-                    <span class="tok">so</span>
-                    <span class="tok impact">JULIA</span>
+              <!-- Live Cinema Theater Stage -->
+              <div class="step3-preview-card">
+                <div class="theater-card-header">
+                  <div class="theater-meta-left">
+                    <span>ESCENARIO CINEMA EN TIEMPO REAL</span>
+                    <span id="stage-active-kf-badge" class="badge-kf-indicator">KF: Lime #8acf00</span>
+                  </div>
+                  <span class="badge-fps">AuraMusic Engine 60FPS</span>
+                </div>
+
+                <div class="cinema-live-stage" id="step3-cinema-stage" data-lyrics-theme="brat" data-brat-palette="lime">
+                  <div class="stage-center-box" id="step3-stage-center-box">
+                    <div class="stage-active-line" id="step3-stage-active-line">
+                      <span class="tok active">I</span>
+                      <span class="tok">went</span>
+                      <span class="tok">to</span>
+                      <span class="tok">the</span>
+                      <span class="tok focus">city,</span>
+                      <span class="tok">I'm</span>
+                      <span class="tok">so</span>
+                      <span class="tok impact">JULIA</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -464,10 +559,15 @@
 
         <!-- YouTube Input Row -->
         <div class="modal-field">
-          <label for="input-add-yt">URL o Video ID de YouTube Music:</label>
+          <label for="input-add-yt">URL o Video ID de YouTube Music (Pega el link y se detecta todo):</label>
           <div class="input-with-action">
-            <input type="text" id="input-add-yt" placeholder="Ej: https://music.youtube.com/watch?v=W22T_5YqH94 o W22T_5YqH94" />
-            <button class="btn-secondary-micro" id="btn-detect-yt">Auto-Detectar</button>
+            <input type="text" id="input-add-yt" placeholder="Ej: https://music.youtube.com/watch?v=WJW-VvmRKsE" />
+            <button class="btn-secondary-micro" id="btn-detect-yt">⚡ Detectar</button>
+          </div>
+          <!-- Live Auto-Detection Status Banner -->
+          <div id="yt-auto-meta-banner" class="yt-auto-meta-banner" style="display: none;">
+            <span class="meta-spinner" id="meta-detect-spinner"></span>
+            <span class="meta-detect-text" id="meta-detect-text">Detectando información del enlace...</span>
           </div>
         </div>
 
