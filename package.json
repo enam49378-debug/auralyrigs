@@ -1,0 +1,21 @@
+{
+  "name": "auralyrics",
+  "version": "2.0.0",
+  "description": "AuraLyrics Studio: Editor visual de letras sincronizadas, ritmo y efectos Brat para AuraMusic y YouTube Music",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "auramusic",
+    "auralyrics",
+    "lyrics-editor",
+    "karaoke",
+    "brat-generator",
+    "youtube-music",
+    "kinetic-typography"
+  ],
+  "author": "Jesuluto <enam49378-debug>",
+  "license": "MIT"
+}

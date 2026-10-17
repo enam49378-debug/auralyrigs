@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraLyrics Studio — Biblioteca, Editor de Versos & Efectos Brat</title>
+  <meta name="description" content="AuraLyrics Studio: Biblioteca de canciones, sincronización paso a paso (versos, frases, efectos Brat) y conexión con AuraMusic & LRCLIB.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="studio.css">
+</head>
+<body class="studio-body">
+
+  <!-- =========================================================================
+       GLOBAL APP HEADER
+       ========================================================================= -->
+  <header class="app-header">
+    <div class="header-brand-box" id="btn-brand-home">
+      <div class="brand-logo-badge">
+        <span class="brand-glow-circle"></span>
+        <svg class="brand-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18V5l12-2v13"></path>
+          <circle cx="6" cy="18" r="3"></circle>
+          <circle cx="18" cy="16" r="3"></circle>
+        </svg>
+      </div>
+      <div class="brand-titles">
+        <div class="brand-title-row">
+          <span class="brand-name">AURA<span class="accent-lime">LYRICS</span></span>
+          <span class="brand-tag-pill">STUDIO v2.0</span>
+          <span class="brand-tag-brat">BRAT ENGINE</span>
+        </div>
+        <span class="brand-subline">Biblioteca Comunitaria & Editor de Ritmo para AuraMusic</span>
+      </div>
+    </div>
+
+    <!-- Right Header Meta -->
+    <div class="header-right-meta">
+      <div class="server-status-box" id="server-status-pill">
+        <span class="status-dot"></span>
+        <span class="status-label" id="server-status-text">Local Server: Conectado</span>
+      </div>
+
+      <button id="btn-header-new-song" class="btn-glow-lime">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Nueva Canción</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       VIEW 1: BIBLIOTECA DE CANCIONES (CARDS MENU)
+       ========================================================================= -->
+  <main class="app-view active" id="view-library">
+    <div class="library-hero-banner">
+      <div class="hero-content">
+        <h1>BIBLIOTECA DE <span class="accent-lime">LETRAS & RITMO</span></h1>
+        <p>Selecciona una canción existente para afinar o agrega una nueva desde YouTube Music y LRCLIB.</p>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-box">
+          <span class="stat-number" id="stats-total-songs">0</span>
+          <span class="stat-label">Canciones</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-number" id="stats-brat-songs">0</span>
+          <span class="stat-label">Con Brat 808</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards Grid -->
+    <section class="library-grid-container" id="library-cards-grid">
+      <!-- 1. The "+ Agregar Canción" Card (Always present) -->
+      <div class="library-card add-song-card" id="card-trigger-add-song">
+        <div class="add-card-content">
+          <div class="add-circle-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </div>
+          <h3>Agregar Canción</h3>
+          <p>Pega un link de YouTube Music, importa de LRCLIB o crea desde cero</p>
+          <span class="badge-add-pill">+ NUEVO PROYECTO</span>
+        </div>
+      </div>
+
+      <!-- Dynamic cards injected by studio.js -->
+    </section>
+  </main>
+
+  <!-- =========================================================================
+       VIEW 2: STUDIO DE EDICIÓN EN 3 PASOS
+       ========================================================================= -->
+  <main class="app-view" id="view-editor" style="display: none;">
+    <!-- Step Navigation Pipeline Bar -->
+    <nav class="editor-stepper-bar">
+      <button class="btn-back-library" id="btn-back-to-library" title="Volver a la Biblioteca de Canciones">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Biblioteca</span>
+      </button>
+
+      <div class="current-track-summary">
+        <img id="editor-track-thumb" class="track-thumb-mini" src="https://img.youtube.com/vi/W22T_5YqH94/hqdefault.jpg" alt="Cover" />
+        <div class="track-info-mini">
+          <strong id="editor-track-title">360</strong>
+          <span id="editor-track-artist">Charli xcx</span>
+        </div>
+      </div>
+
+      <!-- The 3-Step Pipeline -->
+      <div class="pipeline-steps">
+        <button class="step-btn active" data-step="1" id="step-btn-1">
+          <span class="step-num">1</span>
+          <span class="step-label">Versos (Líneas)</span>
+        </button>
+        <span class="step-arrow">→</span>
+        <button class="step-btn" data-step="2" id="step-btn-2">
+          <span class="step-num">2</span>
+          <span class="step-label">Frases & Palabras</span>
+        </button>
+        <span class="step-arrow">→</span>
+        <button class="step-btn" data-step="3" id="step-btn-3">
+          <span class="step-num">3</span>
+          <span class="step-label">Efectos & Ritmo (Brat)</span>
+        </button>
+      </div>
+
+      <div class="editor-top-actions">
+        <button class="btn-secondary" id="btn-save-current-track" title="Guardar cambios en database/">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          <span>Guardar</span>
+        </button>
+
+        <button class="btn-glow-lime" id="btn-export-track-modal" title="Exportar para AuraMusic y GitHub">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>Exportar</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Editor Body: Side Player + Step Content Container -->
+    <div class="editor-workspace-layout">
+      <!-- Persistent Left Player Column -->
+      <aside class="editor-player-sidebar">
+        <!-- YouTube Embed Deck -->
+        <div class="sidebar-yt-wrapper">
+          <div id="yt-player"></div>
+        </div>
+
+        <!-- Master Transport & Time Display -->
+        <div class="transport-dock">
+          <div class="dock-time-row">
+            <span class="dock-time-current" id="dock-time-current">00:00.00</span>
+            <span class="dock-time-sep">/</span>
+            <span class="dock-time-total" id="dock-time-total">02:13.00</span>
+          </div>
+
+          <div class="dock-seeker-box">
+            <input type="range" id="dock-seeker-slider" min="0" max="100" step="0.05" value="0" />
+            <div class="dock-beat-markers-track" id="dock-beat-markers"></div>
+          </div>
+
+          <div class="dock-controls-row">
+            <button id="dock-btn-rewind-3" class="btn-dock-icon" title="Retroceder 3 segundos (←)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 19 2 12 11 5 11 19"></polygon>
+                <polygon points="22 19 13 12 22 5 22 19"></polygon>
+              </svg>
+              <span>-3s</span>
+            </button>
+
+            <button id="dock-btn-play-pause" class="btn-dock-play" title="Play / Pausa (Espacio)">
+              <svg id="dock-icon-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <svg id="dock-icon-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+            </button>
+
+            <button id="dock-btn-forward-3" class="btn-dock-icon" title="Avanzar 3 segundos (→)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 19 22 12 13 5 13 19"></polygon>
+                <polygon points="2 19 11 12 2 5 2 19"></polygon>
+              </svg>
+              <span>+3s</span>
+            </button>
+
+            <div class="speed-select-box">
+              <label>Velocidad:</label>
+              <select id="dock-playback-rate">
+                <option value="0.5">0.5x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1.0" selected>1.0x</option>
+                <option value="1.25">1.25x</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Big Tap Buttons for Fast Sync -->
+        <div class="dock-tap-actions">
+          <button id="btn-tap-verse-stamp" class="btn-huge-stamp stamp-verse">
+            <span class="stamp-pill">TECLA ESPACIO</span>
+            <strong>MARCAR VERSO</strong>
+            <small>Toca al inicio de la frase</small>
+          </button>
+
+          <button id="btn-tap-beat-stamp" class="btn-huge-stamp stamp-beat">
+            <span class="stamp-pill">TECLA B</span>
+            <strong>GOLPE 808 / BEAT</strong>
+            <small>Toca en caídas y kicks</small>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Center Step Workspace Container -->
+      <section class="editor-step-stage">
+        <!-- ===================================================================
+             PASO 1: VERSOS (CONFIGURAR LÍNEAS / TIMESTAMPS)
+             =================================================================== -->
+        <div class="step-view active" id="step-view-1">
+          <div class="step-view-header">
+            <div>
+              <h2>PASO 1: SINCRONIZACIÓN DE <span class="accent-lime">VERSOS</span></h2>
+              <p>Escucha la canción y marca el momento exacto en que comienza cada verso.</p>
+            </div>
+            <div class="step-view-tools">
+              <button id="btn-step1-fetch-lrclib" class="btn-lrclib-badge" title="Buscar y rellenar versos automáticamente desde LRCLIB">
+                <span class="lrclib-sparkle">✨</span>
+                <span>Buscar en LRCLIB</span>
+              </button>
+              <button id="btn-step1-edit-raw" class="btn-secondary-micro">
+                <span>Pegar Letra Raw</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Raw Text Paste Box (Toggleable) -->
+          <div class="raw-paste-drawer" id="raw-paste-drawer" style="display: none;">
+            <textarea id="raw-paste-textarea" placeholder="Pega tu letra aquí (un verso por línea o formato LRC con timestamps [00:12.34])..."></textarea>
+            <div class="raw-paste-actions">
+              <button id="btn-apply-raw-verses" class="btn-primary-small">Aplicar Versos al Editor</button>
+              <button id="btn-cancel-raw" class="btn-secondary-micro">Cancelar</button>
+            </div>
+          </div>
+
+          <!-- Verses Interactive Synchronizer List -->
+          <div class="verses-list-container" id="step1-verses-list">
+            <!-- Dynamic verse items injected by studio.js -->
+          </div>
+
+          <!-- Step 1 Bottom Footer -->
+          <div class="step-view-footer">
+            <span>¿Terminaste de marcar los versos?</span>
+            <button class="btn-primary-small" id="btn-goto-step-2">Continuar a Frases & Palabras →</button>
+          </div>
+        </div>
+
+        <!-- ===================================================================
+             PASO 2: FRASES Y PALABRAS (KARAOKE PALABRA POR PALABRA)
+             =================================================================== -->
+        <div class="step-view" id="step-view-2" style="display: none;">
+          <div class="step-view-header">
+            <div>
+              <h2>PASO 2: AFINACIÓN DE <span class="accent-lime">FRASES & PALABRAS</span></h2>
+              <p>Divide los versos en palabras y sílabas con tiempo de inicio y fin para el efecto karaoke.</p>
+            </div>
+            <div class="step-view-tools">
+              <button id="btn-auto-syllables-all" class="btn-secondary-micro">
+                🪄 Distribuir Palabras Automáticamente
+              </button>
+            </div>
+          </div>
+
+          <!-- Selected Verse Selector -->
+          <div class="words-verse-selector-bar">
+            <label>Verso Seleccionado:</label>
+            <select id="words-verse-dropdown">
+              <!-- Populated dynamically -->
+            </select>
+            <div class="verse-type-pill-box">
+              <label>Tipo de Vocal:</label>
+              <select id="verse-vocal-type">
+                <option value="vocal">🎤 Vocal (Canto Lírico)</option>
+                <option value="spoken">🗣️ Spoken (Rap / Frase Hablada)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Words Syllable Grid Stage -->
+          <div class="words-syllable-stage" id="step2-words-stage">
+            <!-- Injected by studio.js -->
+          </div>
+
+          <div class="step-view-footer">
+            <button class="btn-secondary" id="btn-back-to-step-1">← Volver a Versos</button>
+            <button class="btn-primary-small" id="btn-goto-step-3">Continuar a Efectos & Ritmo (Brat) →</button>
+          </div>
+        </div>
+
+        <!-- ===================================================================
+             PASO 3: EFECTOS & RITMO (BRAT ENGINE & CINEMA PREVIEW)
+             =================================================================== -->
+        <div class="step-view" id="step-view-3" style="display: none;">
+          <div class="step-view-header">
+            <div>
+              <h2>PASO 3: EFECTOS VISUALES & <span class="accent-lime">RITMO BRAT</span></h2>
+              <p>Personaliza la estética tipográfica cinética, las sacudidas de bajos 808 y previsualiza en vivo.</p>
+            </div>
+            <div class="step-view-tools">
+              <button id="btn-step3-clear-beats" class="btn-text-danger">Limpiar Beats</button>
+            </div>
+          </div>
+
+          <div class="step3-effects-grid">
+            <!-- Controls Column -->
+            <div class="step3-controls-card">
+              <!-- Aesthetic Preset -->
+              <div class="effects-field">
+                <label>Tema Cinemático de AuraMusic:</label>
+                <div class="theme-pill-radios">
+                  <label class="theme-pill-option active">
+                    <input type="radio" name="preview-theme" value="brat" checked />
+                    <span class="pill-dot brat-dot"></span>
+                    <span>Brat Kinetic</span>
+                  </label>
+                  <label class="theme-pill-option">
+                    <input type="radio" name="preview-theme" value="apple" />
+                    <span class="pill-dot apple-dot"></span>
+                    <span>Apple Music Glow</span>
+                  </label>
+                  <label class="theme-pill-option">
+                    <input type="radio" name="preview-theme" value="cyberpunk" />
+                    <span class="pill-dot cyber-dot"></span>
+                    <span>Cyberpunk HUD</span>
+                  </label>
+                  <label class="theme-pill-option">
+                    <input type="radio" name="preview-theme" value="komi" />
+                    <span class="pill-dot komi-dot"></span>
+                    <span>Komi Notebook</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Brat Palette Selector -->
+              <div class="effects-field" id="step3-brat-palette-box">
+                <label>Paleta de Color Brat:</label>
+                <div class="palette-swatches-grid">
+                  <button class="palette-swatch-btn swatch-lime active" data-palette="lime" title="Lime Green (Original)">Lime</button>
+                  <button class="palette-swatch-btn swatch-white" data-palette="white" title="White / Ink">White</button>
+                  <button class="palette-swatch-btn swatch-red" data-palette="red" title="Red / Blue">Red</button>
+                  <button class="palette-swatch-btn swatch-blue" data-palette="blue" title="Blue / Red">Blue</button>
+                  <button class="palette-swatch-btn swatch-yellow" data-palette="yellow" title="Yellow / Dark">Yellow</button>
+                  <button class="palette-swatch-btn swatch-ink" data-palette="ink" title="OLED Ink Black">Ink</button>
+                </div>
+              </div>
+
+              <!-- Kinetic Blur & Scale Sliders -->
+              <div class="effects-field">
+                <div class="slider-row">
+                  <label>Desenfoco Cinético en Palabras (Blur): <strong id="lbl-blur-val">6px</strong></label>
+                  <input type="range" id="step3-slider-blur" min="0" max="14" step="1" value="6" />
+                </div>
+                <div class="slider-row">
+                  <label>Escala de Palabras Clave: <strong id="lbl-scale-val">1.5x</strong></label>
+                  <input type="range" id="step3-slider-scale" min="1.0" max="2.2" step="0.1" value="1.5" />
+                </div>
+                <div class="checkbox-row">
+                  <label class="custom-chk">
+                    <input type="checkbox" id="step3-chk-shake" checked />
+                    <span>Sacudida de pantalla y destello en cada Golpe de 808</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Beats Summary -->
+              <div class="beats-summary-box">
+                <span>Golpes de 808 / Beats Registrados: <strong id="lbl-beats-count">0</strong></span>
+                <small>Presiona la tecla <strong>[B]</strong> mientras escuchas para marcar más golpes</small>
+              </div>
+            </div>
+
+            <!-- Live Cinema Theater Stage -->
+            <div class="step3-preview-card">
+              <div class="theater-card-header">
+                <span>VISTA PREVIA CINEMÁTICA EN VIVO</span>
+                <span class="badge-fps">AuraMusic Engine 60FPS</span>
+              </div>
+
+              <div class="cinema-live-stage" id="step3-cinema-stage" data-lyrics-theme="brat" data-brat-palette="lime">
+                <div class="stage-center-box" id="step3-stage-center-box">
+                  <div class="stage-active-line" id="step3-stage-active-line">
+                    <span class="tok active">I</span>
+                    <span class="tok">went</span>
+                    <span class="tok">to</span>
+                    <span class="tok">the</span>
+                    <span class="tok focus">city,</span>
+                    <span class="tok">I'm</span>
+                    <span class="tok">so</span>
+                    <span class="tok impact">JULIA</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="step-view-footer">
+            <button class="btn-secondary" id="btn-back-to-step-2">← Volver a Frases</button>
+            <button class="btn-glow-lime" id="btn-step3-export">¡Todo Listo! Guardar & Exportar a GitHub →</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- =========================================================================
+       MODAL 1: AGREGAR NUEVA CANCIÓN (YOUTUBE + LRCLIB)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="modal-add-song" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-row">
+          <span class="modal-badge-plus">+</span>
+          <h3>Agregar Nueva Canción a la Biblioteca</h3>
+        </div>
+        <button class="btn-close-modal" id="btn-close-modal-add">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-sub">Ingresa el enlace o ID de YouTube Music para comenzar a sincronizar:</p>
+
+        <!-- YouTube Input Row -->
+        <div class="modal-field">
+          <label for="input-add-yt">URL o Video ID de YouTube Music:</label>
+          <div class="input-with-action">
+            <input type="text" id="input-add-yt" placeholder="Ej: https://music.youtube.com/watch?v=W22T_5YqH94 o W22T_5YqH94" />
+            <button class="btn-secondary-micro" id="btn-detect-yt">Auto-Detectar</button>
+          </div>
+        </div>
+
+        <div class="modal-fields-split">
+          <div class="modal-field">
+            <label for="input-add-title">Título de la Canción:</label>
+            <input type="text" id="input-add-title" placeholder="Ej: 360" />
+          </div>
+          <div class="modal-field">
+            <label for="input-add-artist">Artista(s):</label>
+            <input type="text" id="input-add-artist" placeholder="Ej: Charli xcx" />
+          </div>
+        </div>
+
+        <!-- LRCLIB Integration Option -->
+        <div class="lrclib-callout-card">
+          <div class="lrclib-callout-header">
+            <span class="lrclib-badge-pill">LRCLIB INTEGRATION</span>
+            <label class="custom-chk">
+              <input type="checkbox" id="chk-auto-lrclib" checked />
+              <span>Buscar y rellenar versos automáticamente con LRCLIB</span>
+            </label>
+          </div>
+          <p>Consulta la base de datos de <code>lrclib.net</code> para cargar la letra ya estructurada y ahorrarte escribirla.</p>
+        </div>
+
+        <!-- Cover Preview -->
+        <div class="cover-preview-box" id="add-cover-preview-box">
+          <img id="add-cover-preview-img" src="https://img.youtube.com/vi/W22T_5YqH94/hqdefault.jpg" alt="Cover" />
+          <div class="cover-preview-text">
+            <strong id="add-preview-title">Vista Previa de Canción</strong>
+            <span id="add-preview-artist">Pega una URL arriba para ver la miniatura</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-cancel-add-song">Cancelar</button>
+        <button class="btn-glow-lime" id="btn-submit-create-song">Crear y Abrir en Editor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODAL 2: EXPORTAR PARA GITHUB Y AURAMUSIC
+       ========================================================================= -->
+  <div class="modal-backdrop" id="modal-export" style="display: none;">
+    <div class="modal-card modal-card-export">
+      <div class="modal-header">
+        <div class="modal-title-row">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <h3>Exportar Letras & Efectos</h3>
+        </div>
+        <button class="btn-close-modal" id="btn-close-modal-export">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="export-methods-grid">
+          <div class="export-method-card">
+            <h4>1. Guardar en Servidor Local</h4>
+            <p>Guarda el JSON directamente en <code>database/</code> para que AuraMusic lo lea en <code>localhost:3000</code>.</p>
+            <button id="btn-export-save-db" class="btn-primary-small">Guardar en Base de Datos</button>
+          </div>
+
+          <div class="export-method-card">
+            <h4>2. Descargar JSON para GitHub</h4>
+            <p>Descarga el archivo <code>.json</code> listo para subirlo a tu repositorio público en GitHub.</p>
+            <button id="btn-export-download-json" class="btn-secondary-micro">Descargar JSON</button>
+          </div>
+
+          <div class="export-method-card">
+            <h4>3. Formato Estándar LRC</h4>
+            <p>Descarga la letra tradicional en formato <code>.lrc</code> con marcas de tiempo.</p>
+            <button id="btn-export-download-lrc" class="btn-secondary-micro">Descargar .LRC</button>
+          </div>
+        </div>
+
+        <div class="json-preview-container">
+          <div class="json-preview-header">
+            <span>Vista Previa del JSON (Formato nativo AuraMusic):</span>
+            <button id="btn-export-copy-clipboard" class="btn-secondary-micro">Copiar al Portapapeles</button>
+          </div>
+          <pre class="json-code-box" id="export-json-code-preview"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <!-- Main Studio App Engine -->
+  <script src="studio.js"></script>
+</body>
+</html>

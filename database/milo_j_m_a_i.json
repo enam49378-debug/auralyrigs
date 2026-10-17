@@ -1,0 +1,74 @@
+{
+  "found": true,
+  "track": {
+    "title": "M.A.I",
+    "artist": "Milo J",
+    "videoId": "8Z_Vz9lLDK0",
+    "duration": 184,
+    "lines": [
+      {
+        "time": 8.10,
+        "text": "Y si te vas, que sea conmigo",
+        "type": "vocal",
+        "words": [
+          { "word": "Y", "start": 8.10, "end": 8.30 },
+          { "word": "si", "start": 8.32, "end": 8.55 },
+          { "word": "te", "start": 8.58, "end": 8.80 },
+          { "word": "vas,", "start": 8.82, "end": 9.40 },
+          { "word": "que", "start": 9.50, "end": 9.75 },
+          { "word": "sea", "start": 9.78, "end": 10.15 },
+          { "word": "conmigo", "start": 10.20, "end": 11.20 }
+        ]
+      },
+      {
+        "time": 11.50,
+        "text": "Que la soledad no me deja en paz",
+        "type": "vocal",
+        "words": [
+          { "word": "Que", "start": 11.50, "end": 11.75 },
+          { "word": "la", "start": 11.78, "end": 11.95 },
+          { "word": "soledad", "start": 12.00, "end": 12.80 },
+          { "word": "no", "start": 12.85, "end": 13.10 },
+          { "word": "me", "start": 13.12, "end": 13.30 },
+          { "word": "deja", "start": 13.35, "end": 13.85 },
+          { "word": "en", "start": 13.90, "end": 14.10 },
+          { "word": "paz", "start": 14.15, "end": 15.00 }
+        ]
+      },
+      {
+        "time": 15.30,
+        "text": "Siento que el frío de este abrigo",
+        "type": "vocal",
+        "words": [
+          { "word": "Siento", "start": 15.30, "end": 15.75 },
+          { "word": "que", "start": 15.78, "end": 15.95 },
+          { "word": "el", "start": 15.98, "end": 16.15 },
+          { "word": "frío", "start": 16.20, "end": 16.70 },
+          { "word": "de", "start": 16.75, "end": 16.95 },
+          { "word": "este", "start": 17.00, "end": 17.35 },
+          { "word": "abrigo", "start": 17.40, "end": 18.25 }
+        ]
+      },
+      {
+        "time": 18.50,
+        "text": "Se va cuando estás, ma, cuando estás",
+        "type": "vocal",
+        "words": [
+          { "word": "Se", "start": 18.50, "end": 18.75 },
+          { "word": "va", "start": 18.78, "end": 19.10 },
+          { "word": "cuando", "start": 19.15, "end": 19.65 },
+          { "word": "estás,", "start": 19.70, "end": 20.25 },
+          { "word": "ma,", "start": 20.40, "end": 20.80 },
+          { "word": "cuando", "start": 20.85, "end": 21.35 },
+          { "word": "estás", "start": 21.40, "end": 22.10 }
+        ]
+      }
+    ],
+    "effects": {
+      "theme": "apple",
+      "bassBeats": [8.10, 11.50, 15.30, 18.50],
+      "kineticSpeed": 1.0,
+      "palette": "ink"
+    }
+  }
+}
