@@ -1,0 +1,554 @@
+{
+  "found": true,
+  "track": {
+    "title": "TE FUI A SEGUIR",
+    "artist": "Milo J",
+    "videoId": "R1Zuqo7XjAs",
+    "duration": 153,
+    "humanReviewed": true,
+    "lines": [
+      {
+        "time": 0.13,
+        "text": "Te vi, y como tonto te fui a seguir",
+        "type": "vocal",
+        "words": [
+          { "word": "Te", "start": 0.13, "end": 0.40 },
+          { "word": "vi,", "start": 0.42, "end": 1.10 },
+          { "word": "y", "start": 1.25, "end": 1.45 },
+          { "word": "como", "start": 1.50, "end": 1.95 },
+          { "word": "tonto", "start": 2.00, "end": 2.65 },
+          { "word": "te", "start": 2.75, "end": 3.05 },
+          { "word": "fui", "start": 3.10, "end": 3.55 },
+          { "word": "a", "start": 3.60, "end": 3.80 },
+          { "word": "seguir", "start": 3.85, "end": 5.40 }
+        ]
+      },
+      {
+        "time": 11.08,
+        "text": "Y es así, cada mañana en que me levanto pienso en ti",
+        "type": "vocal",
+        "words": [
+          { "word": "Y", "start": 11.08, "end": 11.35 },
+          { "word": "es", "start": 11.38, "end": 11.65 },
+          { "word": "así,", "start": 11.70, "end": 12.80 },
+          { "word": "cada", "start": 13.10, "end": 13.60 },
+          { "word": "mañana", "start": 13.65, "end": 14.50 },
+          { "word": "en", "start": 14.55, "end": 14.75 },
+          { "word": "que", "start": 14.78, "end": 14.98 },
+          { "word": "me", "start": 15.02, "end": 15.22 },
+          { "word": "levanto", "start": 15.25, "end": 16.20 },
+          { "word": "pienso", "start": 16.45, "end": 17.20 },
+          { "word": "en", "start": 17.25, "end": 17.50 },
+          { "word": "ti", "start": 17.55, "end": 19.10 }
+        ]
+      },
+      {
+        "time": 23.01,
+        "text": "Vi un mensaje llegar a mi teléfono",
+        "type": "vocal",
+        "words": [
+          { "word": "Vi", "start": 23.01, "end": 23.35 },
+          { "word": "un", "start": 23.38, "end": 23.60 },
+          { "word": "mensaje", "start": 23.65, "end": 24.50 },
+          { "word": "llegar", "start": 24.60, "end": 25.30 },
+          { "word": "a", "start": 25.35, "end": 25.55 },
+          { "word": "mi", "start": 25.60, "end": 25.85 },
+          { "word": "teléfono", "start": 25.90, "end": 27.50 }
+        ]
+      },
+      {
+        "time": 28.24,
+        "text": "Pienso que eres tú, tú, tú",
+        "type": "vocal",
+        "words": [
+          { "word": "Pienso", "start": 28.24, "end": 28.85 },
+          { "word": "que", "start": 28.90, "end": 29.15 },
+          { "word": "eres", "start": 29.20, "end": 29.80 },
+          { "word": "tú,", "start": 29.95, "end": 31.20 },
+          { "word": "tú,", "start": 31.40, "end": 32.70 },
+          { "word": "tú", "start": 32.90, "end": 34.40 }
+        ]
+      },
+      {
+        "time": 34.92,
+        "text": "Y no eres tú",
+        "type": "vocal",
+        "words": [
+          { "word": "Y", "start": 34.92, "end": 35.25 },
+          { "word": "no", "start": 35.30, "end": 35.75 },
+          { "word": "eres", "start": 35.80, "end": 36.45 },
+          { "word": "tú", "start": 36.50, "end": 38.30 }
+        ]
+      },
+      {
+        "time": 38.91,
+        "text": "Otra borrachera, otra madrugada",
+        "type": "vocal",
+        "words": [
+          { "word": "Otra", "start": 38.91, "end": 39.40 },
+          { "word": "borrachera,", "start": 39.45, "end": 40.25 },
+          { "word": "otra", "start": 40.35, "end": 40.75 },
+          { "word": "madrugada", "start": 40.80, "end": 41.50 }
+        ]
+      },
+      {
+        "time": 41.56,
+        "text": "No puedo olvidarme de tu mirada, ah",
+        "type": "vocal",
+        "words": [
+          { "word": "No", "start": 41.56, "end": 41.85 },
+          { "word": "puedo", "start": 41.90, "end": 42.40 },
+          { "word": "olvidarme", "start": 42.45, "end": 43.35 },
+          { "word": "de", "start": 43.40, "end": 43.60 },
+          { "word": "tu", "start": 43.65, "end": 43.90 },
+          { "word": "mirada,", "start": 43.95, "end": 45.10 },
+          { "word": "ah", "start": 45.15, "end": 46.50 }
+        ]
+      },
+      {
+        "time": 46.96,
+        "text": "Cada vez se enamora",
+        "type": "vocal",
+        "words": [
+          { "word": "Cada", "start": 46.96, "end": 47.45 },
+          { "word": "vez", "start": 47.50, "end": 47.90 },
+          { "word": "se", "start": 47.95, "end": 48.20 },
+          { "word": "enamora", "start": 48.25, "end": 49.60 }
+        ]
+      },
+      {
+        "time": 49.85,
+        "text": "No sé qué me hiciste, no puedo olvidarte",
+        "type": "vocal",
+        "words": [
+          { "word": "No", "start": 49.85, "end": 50.15 },
+          { "word": "sé", "start": 50.20, "end": 50.50 },
+          { "word": "qué", "start": 50.55, "end": 50.85 },
+          { "word": "me", "start": 50.90, "end": 51.10 },
+          { "word": "hiciste,", "start": 51.15, "end": 51.75 },
+          { "word": "no", "start": 51.80, "end": 52.00 },
+          { "word": "puedo", "start": 52.05, "end": 52.35 },
+          { "word": "olvidarte", "start": 52.40, "end": 52.70 }
+        ]
+      },
+      {
+        "time": 52.71,
+        "text": "Siento que tus ojos me llevan a Marte",
+        "type": "vocal",
+        "words": [
+          { "word": "Siento", "start": 52.71, "end": 53.25 },
+          { "word": "que", "start": 53.30, "end": 53.50 },
+          { "word": "tus", "start": 53.55, "end": 53.80 },
+          { "word": "ojos", "start": 53.85, "end": 54.55 },
+          { "word": "me", "start": 54.60, "end": 54.80 },
+          { "word": "llevan", "start": 54.85, "end": 55.50 },
+          { "word": "a", "start": 55.55, "end": 55.75 },
+          { "word": "Marte", "start": 55.80, "end": 57.60 }
+        ]
+      },
+      {
+        "time": 58.07,
+        "text": "Solo voy a dañarme",
+        "type": "vocal",
+        "words": [
+          { "word": "Solo", "start": 58.07, "end": 58.70 },
+          { "word": "voy", "start": 58.75, "end": 59.20 },
+          { "word": "a", "start": 59.25, "end": 59.50 },
+          { "word": "dañarme", "start": 59.55, "end": 60.85 }
+        ]
+      },
+      {
+        "time": 61.02,
+        "text": "Ni somos nada tú y yo",
+        "type": "vocal",
+        "words": [
+          { "word": "Ni", "start": 61.02, "end": 61.35 },
+          { "word": "somos", "start": 61.40, "end": 62.00 },
+          { "word": "nada", "start": 62.05, "end": 62.70 },
+          { "word": "tú", "start": 62.75, "end": 63.30 },
+          { "word": "y", "start": 63.35, "end": 63.50 },
+          { "word": "yo", "start": 63.55, "end": 64.00 }
+        ]
+      },
+      {
+        "time": 64.10,
+        "text": "¿Cómo perros me pasó esto, esto?",
+        "type": "vocal",
+        "words": [
+          { "word": "¿Cómo", "start": 64.10, "end": 64.70 },
+          { "word": "perros", "start": 64.75, "end": 65.50 },
+          { "word": "me", "start": 65.55, "end": 65.80 },
+          { "word": "pasó", "start": 65.85, "end": 66.80 },
+          { "word": "esto,", "start": 67.10, "end": 68.30 },
+          { "word": "esto?", "start": 68.60, "end": 70.80 }
+        ]
+      },
+      {
+        "time": 72.13,
+        "text": "Tú jugando con mi amor",
+        "type": "vocal",
+        "words": [
+          { "word": "Tú", "start": 72.13, "end": 72.60 },
+          { "word": "jugando", "start": 72.65, "end": 73.55 },
+          { "word": "con", "start": 73.60, "end": 73.90 },
+          { "word": "mi", "start": 73.95, "end": 74.25 },
+          { "word": "amor", "start": 74.30, "end": 75.00 }
+        ]
+      },
+      {
+        "time": 75.02,
+        "text": "Me convierto en lo que soy hoy, hoy",
+        "type": "vocal",
+        "words": [
+          { "word": "Me", "start": 75.02, "end": 75.30 },
+          { "word": "convierto", "start": 75.35, "end": 76.25 },
+          { "word": "en", "start": 76.30, "end": 76.50 },
+          { "word": "lo", "start": 76.55, "end": 76.75 },
+          { "word": "que", "start": 76.80, "end": 77.05 },
+          { "word": "soy", "start": 77.10, "end": 77.90 },
+          { "word": "hoy,", "start": 78.20, "end": 79.40 },
+          { "word": "hoy", "start": 79.70, "end": 81.60 }
+        ]
+      },
+      {
+        "time": 82.47,
+        "text": "Recordé como era ante'",
+        "type": "vocal",
+        "words": [
+          { "word": "Recordé", "start": 82.47, "end": 83.35 },
+          { "word": "como", "start": 83.40, "end": 83.95 },
+          { "word": "era", "start": 84.00, "end": 84.60 },
+          { "word": "ante'", "start": 84.65, "end": 85.45 }
+        ]
+      },
+      {
+        "time": 85.49,
+        "text": "Como fuiste perdiendo eso que te diferenciaba y un día pudo enamorarme",
+        "type": "vocal",
+        "words": [
+          { "word": "Como", "start": 85.49, "end": 85.85 },
+          { "word": "fuiste", "start": 85.90, "end": 86.40 },
+          { "word": "perdiendo", "start": 86.45, "end": 87.20 },
+          { "word": "eso", "start": 87.25, "end": 87.65 },
+          { "word": "que", "start": 87.70, "end": 87.90 },
+          { "word": "te", "start": 87.95, "end": 88.15 },
+          { "word": "diferenciaba", "start": 88.20, "end": 89.20 },
+          { "word": "y", "start": 89.25, "end": 89.40 },
+          { "word": "un", "start": 89.45, "end": 89.65 },
+          { "word": "día", "start": 89.70, "end": 90.05 },
+          { "word": "pudo", "start": 90.10, "end": 90.35 },
+          { "word": "enamorarme", "start": 90.40, "end": 90.68 }
+        ]
+      },
+      {
+        "time": 90.70,
+        "text": "Sí, todavía te quiero pero creo que por dependencia y no por amarte",
+        "type": "vocal",
+        "words": [
+          { "word": "Sí,", "start": 90.70, "end": 91.20 },
+          { "word": "todavía", "start": 91.25, "end": 91.95 },
+          { "word": "te", "start": 92.00, "end": 92.20 },
+          { "word": "quiero", "start": 92.25, "end": 92.80 },
+          { "word": "pero", "start": 92.85, "end": 93.20 },
+          { "word": "creo", "start": 93.25, "end": 93.65 },
+          { "word": "que", "start": 93.70, "end": 93.90 },
+          { "word": "por", "start": 93.95, "end": 94.20 },
+          { "word": "dependencia", "start": 94.25, "end": 95.10 },
+          { "word": "y", "start": 95.15, "end": 95.30 },
+          { "word": "no", "start": 95.35, "end": 95.60 },
+          { "word": "por", "start": 95.65, "end": 95.85 },
+          { "word": "amarte", "start": 95.90, "end": 96.48 }
+        ]
+      },
+      {
+        "time": 96.51,
+        "text": "Y yo sé que al final te lo cundía",
+        "type": "vocal",
+        "words": [
+          { "word": "Y", "start": 96.51, "end": 96.75 },
+          { "word": "yo", "start": 96.80, "end": 97.05 },
+          { "word": "sé", "start": 97.10, "end": 97.35 },
+          { "word": "que", "start": 97.40, "end": 97.55 },
+          { "word": "al", "start": 97.60, "end": 97.80 },
+          { "word": "final", "start": 97.85, "end": 98.20 },
+          { "word": "te", "start": 98.22, "end": 98.32 },
+          { "word": "lo", "start": 98.34, "end": 98.42 },
+          { "word": "cundía", "start": 98.44, "end": 98.52 }
+        ]
+      },
+      {
+        "time": 98.52,
+        "text": "Fue un nosotros sin peleas ni sospechas",
+        "type": "vocal",
+        "words": [
+          { "word": "Fue", "start": 98.52, "end": 98.90 },
+          { "word": "un", "start": 98.95, "end": 99.15 },
+          { "word": "nosotros", "start": 99.20, "end": 99.95 },
+          { "word": "sin", "start": 100.00, "end": 100.35 },
+          { "word": "peleas", "start": 100.40, "end": 101.00 },
+          { "word": "ni", "start": 101.05, "end": 101.25 },
+          { "word": "sospechas", "start": 101.30, "end": 101.80 }
+        ]
+      },
+      {
+        "time": 101.82,
+        "text": "Sin sospechosos ni culpables",
+        "type": "vocal",
+        "words": [
+          { "word": "Sin", "start": 101.82, "end": 102.20 },
+          { "word": "sospechosos", "start": 102.25, "end": 103.20 },
+          { "word": "ni", "start": 103.25, "end": 103.55 },
+          { "word": "culpables", "start": 103.60, "end": 104.65 }
+        ]
+      },
+      {
+        "time": 104.70,
+        "text": "¿Por que fui a enamorarme?",
+        "type": "vocal",
+        "words": [
+          { "word": "¿Por", "start": 104.70, "end": 105.10 },
+          { "word": "que", "start": 105.15, "end": 105.40 },
+          { "word": "fui", "start": 105.45, "end": 105.90 },
+          { "word": "a", "start": 105.95, "end": 106.20 },
+          { "word": "enamorarme?", "start": 106.25, "end": 107.85 }
+        ]
+      },
+      {
+        "time": 107.99,
+        "text": "Sabiendo que era el karma que debía y lo hice",
+        "type": "vocal",
+        "words": [
+          { "word": "Sabiendo", "start": 107.99, "end": 108.65 },
+          { "word": "que", "start": 108.70, "end": 108.90 },
+          { "word": "era", "start": 108.95, "end": 109.30 },
+          { "word": "el", "start": 109.35, "end": 109.50 },
+          { "word": "karma", "start": 109.55, "end": 110.05 },
+          { "word": "que", "start": 110.08, "end": 110.20 },
+          { "word": "debía", "start": 110.22, "end": 110.45 },
+          { "word": "y", "start": 110.46, "end": 110.50 },
+          { "word": "lo", "start": 110.51, "end": 110.53 },
+          { "word": "hice", "start": 110.54, "end": 110.56 }
+        ]
+      },
+      {
+        "time": 110.56,
+        "text": "Pero nena, ya es muy tarde",
+        "type": "vocal",
+        "words": [
+          { "word": "Pero", "start": 110.56, "end": 111.00 },
+          { "word": "nena,", "start": 111.05, "end": 111.75 },
+          { "word": "ya", "start": 111.80, "end": 112.10 },
+          { "word": "es", "start": 112.15, "end": 112.35 },
+          { "word": "muy", "start": 112.40, "end": 112.70 },
+          { "word": "tarde", "start": 112.75, "end": 113.15 }
+        ]
+      },
+      {
+        "time": 113.16,
+        "text": "Pero nena, ya es muy tarde",
+        "type": "vocal",
+        "words": [
+          { "word": "Pero", "start": 113.16, "end": 113.70 },
+          { "word": "nena,", "start": 113.75, "end": 114.65 },
+          { "word": "ya", "start": 114.70, "end": 115.10 },
+          { "word": "es", "start": 115.15, "end": 115.45 },
+          { "word": "muy", "start": 115.50, "end": 115.95 },
+          { "word": "tarde", "start": 116.00, "end": 117.00 }
+        ]
+      },
+      {
+        "time": 117.04,
+        "text": "Otra borrachera, otra madrugada",
+        "type": "vocal",
+        "words": [
+          { "word": "Otra", "start": 117.04, "end": 117.60 },
+          { "word": "borrachera,", "start": 117.65, "end": 118.45 },
+          { "word": "otra", "start": 118.50, "end": 118.95 },
+          { "word": "madrugada", "start": 119.00, "end": 119.68 }
+        ]
+      },
+      {
+        "time": 119.71,
+        "text": "No puedo olvidarte de tu mirada, ah",
+        "type": "vocal",
+        "words": [
+          { "word": "No", "start": 119.71, "end": 120.00 },
+          { "word": "puedo", "start": 120.05, "end": 120.55 },
+          { "word": "olvidarte", "start": 120.60, "end": 121.50 },
+          { "word": "de", "start": 121.55, "end": 121.75 },
+          { "word": "tu", "start": 121.80, "end": 122.10 },
+          { "word": "mirada,", "start": 122.15, "end": 123.30 },
+          { "word": "ah", "start": 123.35, "end": 124.95 }
+        ]
+      },
+      {
+        "time": 125.07,
+        "text": "Cada vez se enamora",
+        "type": "vocal",
+        "words": [
+          { "word": "Cada", "start": 125.07, "end": 125.60 },
+          { "word": "vez", "start": 125.65, "end": 126.05 },
+          { "word": "se", "start": 126.10, "end": 126.35 },
+          { "word": "enamora", "start": 126.40, "end": 127.95 }
+        ]
+      },
+      {
+        "time": 128.11,
+        "text": "No sé qué me hiciste, no puedo olvidarte",
+        "type": "vocal",
+        "words": [
+          { "word": "No", "start": 128.11, "end": 128.45 },
+          { "word": "sé", "start": 128.50, "end": 128.80 },
+          { "word": "qué", "start": 128.85, "end": 129.15 },
+          { "word": "me", "start": 129.20, "end": 129.40 },
+          { "word": "hiciste,", "start": 129.45, "end": 130.10 },
+          { "word": "no", "start": 130.15, "end": 130.35 },
+          { "word": "puedo", "start": 130.40, "end": 130.70 },
+          { "word": "olvidarte", "start": 130.75, "end": 131.25 }
+        ]
+      },
+      {
+        "time": 131.32,
+        "text": "Siento que tus ojos me llevan a Marte",
+        "type": "vocal",
+        "words": [
+          { "word": "Siento", "start": 131.32, "end": 131.90 },
+          { "word": "que", "start": 131.95, "end": 132.15 },
+          { "word": "tus", "start": 132.20, "end": 132.45 },
+          { "word": "ojos", "start": 132.50, "end": 133.20 },
+          { "word": "me", "start": 133.25, "end": 133.45 },
+          { "word": "llevan", "start": 133.50, "end": 134.15 },
+          { "word": "a", "start": 134.20, "end": 134.40 },
+          { "word": "Marte", "start": 134.45, "end": 135.95 }
+        ]
+      },
+      {
+        "time": 136.15,
+        "text": "Solo voy a dañarme",
+        "type": "vocal",
+        "words": [
+          { "word": "Solo", "start": 136.15, "end": 136.85 },
+          { "word": "voy", "start": 136.90, "end": 137.35 },
+          { "word": "a", "start": 137.40, "end": 137.65 },
+          { "word": "dañarme", "start": 137.70, "end": 139.20 }
+        ]
+      },
+      {
+        "time": 139.44,
+        "text": "Otra borrachera, otra madrugada",
+        "type": "vocal",
+        "words": [
+          { "word": "Otra", "start": 139.44, "end": 140.05 },
+          { "word": "borrachera,", "start": 140.10, "end": 140.90 },
+          { "word": "otra", "start": 140.95, "end": 141.40 },
+          { "word": "madrugada", "start": 141.45, "end": 141.98 }
+        ]
+      },
+      {
+        "time": 142.01,
+        "text": "No puedo olvidarme de tu mirada, ah",
+        "type": "vocal",
+        "words": [
+          { "word": "No", "start": 142.01, "end": 142.30 },
+          { "word": "puedo", "start": 142.35, "end": 142.85 },
+          { "word": "olvidarme", "start": 142.90, "end": 143.80 },
+          { "word": "de", "start": 143.85, "end": 144.05 },
+          { "word": "tu", "start": 144.10, "end": 144.35 },
+          { "word": "mirada,", "start": 144.40, "end": 145.60 },
+          { "word": "ah", "start": 145.65, "end": 147.05 }
+        ]
+      },
+      {
+        "time": 147.15,
+        "text": "Cada vez se enamora",
+        "type": "vocal",
+        "words": [
+          { "word": "Cada", "start": 147.15, "end": 147.65 },
+          { "word": "vez", "start": 147.70, "end": 148.10 },
+          { "word": "se", "start": 148.15, "end": 148.40 },
+          { "word": "enamora", "start": 148.45, "end": 150.20 }
+        ]
+      }
+    ],
+    "effects": {
+      "theme": "brat",
+      "blur": 6,
+      "scale": 1.5,
+      "shake": true,
+      "kineticSpeed": 1.15,
+      "palette": "ink",
+      "bassBeats": [
+        38.91, 41.56, 46.96, 49.85, 52.71, 58.07,
+        61.02, 64.10, 67.10, 72.13, 75.02, 78.20,
+        110.56, 113.16, 117.04, 119.71, 125.07, 128.11,
+        131.32, 136.15, 139.44, 142.01, 147.15
+      ],
+      "keyframes": [
+        {
+          "time": 0.0,
+          "palette": "ink",
+          "color": "#00f5d4",
+          "bgMode": "radial-glow",
+          "layout": "center",
+          "variant": "lean"
+        },
+        {
+          "time": 23.0,
+          "palette": "purple",
+          "color": "#9d4edd",
+          "bgMode": "radial-glow",
+          "layout": "spread",
+          "variant": "wide"
+        },
+        {
+          "time": 38.9,
+          "palette": "red",
+          "color": "#ff0055",
+          "bgMode": "brat-matrix",
+          "layout": "impact",
+          "variant": "heavy"
+        },
+        {
+          "time": 61.0,
+          "palette": "cyan",
+          "color": "#00f5d4",
+          "bgMode": "radial-glow",
+          "layout": "center",
+          "variant": "heavy"
+        },
+        {
+          "time": 85.5,
+          "palette": "yellow",
+          "color": "#ffbe0b",
+          "bgMode": "radial-glow",
+          "layout": "spread",
+          "variant": "lean"
+        },
+        {
+          "time": 110.5,
+          "palette": "purple",
+          "color": "#c77dff",
+          "bgMode": "brat-matrix",
+          "layout": "impact",
+          "variant": "wide"
+        },
+        {
+          "time": 117.0,
+          "palette": "lime",
+          "color": "#8acf00",
+          "bgMode": "brat-matrix",
+          "layout": "impact",
+          "variant": "heavy"
+        },
+        {
+          "time": 147.0,
+          "palette": "ink",
+          "color": "#8acf00",
+          "bgMode": "solid",
+          "layout": "center",
+          "variant": "lean"
+        }
+      ]
+    }
+  }
+}
