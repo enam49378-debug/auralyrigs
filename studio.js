@@ -858,35 +858,21 @@
   }
 
   function renderKeyframeInspector() {
-    const kfs = state.currentTrack.effects.keyframes || [];
+    const kfs = state.currentTrack?.effects?.keyframes || [];
     const kf = kfs[state.selectedKeyframeIndex] || kfs[0];
     if (!kf) return;
 
     const titleEl = document.getElementById('inspector-kf-title');
     const inputTime = document.getElementById('input-kf-time');
-    const customColor = document.getElementById('input-kf-custom-color');
-    const colorHexLbl = document.getElementById('lbl-kf-color-hex');
-    const bgSelect = document.getElementById('select-kf-bg-mode');
-    const blurSlider = document.getElementById('step3-slider-blur');
-    const scaleSlider = document.getElementById('step3-slider-scale');
-    const blurLbl = document.getElementById('lbl-blur-val');
-    const scaleLbl = document.getElementById('lbl-scale-val');
     const shakeChk = document.getElementById('step3-chk-shake');
 
-    if (titleEl) titleEl.textContent = `💎 Keyframe #${state.selectedKeyframeIndex + 1} (${formatTime(kf.time)})`;
+    if (titleEl) titleEl.textContent = `💎 Keyframe #${state.selectedKeyframeIndex + 1} (${formatTime(kf.time)}) — ${kf.palette?.toUpperCase() || 'LIME'}`;
     if (inputTime) inputTime.value = formatTime(kf.time);
-    if (customColor) customColor.value = kf.color || '#8acf00';
-    if (colorHexLbl) colorHexLbl.textContent = kf.color || '#8acf00';
-    if (bgSelect) bgSelect.value = kf.bgMode || 'solid';
-    if (blurSlider) blurSlider.value = kf.blur || 6;
-    if (scaleSlider) scaleSlider.value = kf.scale || 1.5;
-    if (blurLbl) blurLbl.textContent = `${kf.blur || 6}px`;
-    if (scaleLbl) scaleLbl.textContent = `${kf.scale || 1.5}x`;
     if (shakeChk) shakeChk.checked = kf.shake !== false;
 
     // Palette swatches active
     document.querySelectorAll('.ve-color-grid .palette-swatch-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.palette === kf.palette);
+      btn.classList.toggle('active', btn.dataset.palette === (kf.palette || 'lime'));
     });
 
     // Layout buttons active
@@ -898,11 +884,17 @@
     document.querySelectorAll('.ve-var-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.variant === (kf.variant || 'heavy'));
     });
+
+    // Entry buttons active
+    document.querySelectorAll('.ve-entry-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.entry === (kf.entry || 'rise'));
+    });
   }
 
   function addKeyframeAtCurrentTime() {
     if (!state.currentTrack) return;
     const curT = Math.round(state.currentTime * 100) / 100;
+    if (!state.currentTrack.effects.keyframes) state.currentTrack.effects.keyframes = [];
     const kfs = state.currentTrack.effects.keyframes;
 
     // Check if keyframe already exists nearby
@@ -914,13 +906,10 @@
       const newKf = {
         time: curT,
         palette: prevKf.palette || 'lime',
-        color: prevKf.color || '#8acf00',
-        bgMode: prevKf.bgMode || 'radial-glow',
         layout: prevKf.layout || 'impact',
         variant: prevKf.variant || 'heavy',
-        blur: prevKf.blur || 6,
-        scale: prevKf.scale || 1.5,
-        shake: prevKf.shake !== false
+        entry: prevKf.entry || 'rise',
+        shake: true
       };
       kfs.push(newKf);
       kfs.sort((a, b) => a.time - b.time);
@@ -931,7 +920,7 @@
   }
 
   function deleteSelectedKeyframe() {
-    const kfs = state.currentTrack.effects.keyframes;
+    const kfs = state.currentTrack?.effects?.keyframes;
     if (!kfs || kfs.length <= 1) {
       alert('Debe haber al menos 1 keyframe para la estética de la canción.');
       return;
@@ -944,12 +933,10 @@
   function autoGenerateSectionKeyframes() {
     if (!state.currentTrack || !Array.isArray(state.currentTrack.lines) || !state.currentTrack.lines.length) return;
     const lines = state.currentTrack.lines;
-    const dur = state.duration || 133;
-    const palettes = ['lime', 'purple', 'cyan', 'red', 'yellow', 'ink'];
-    const colors = ['#8acf00', '#9d4edd', '#00f5d4', '#ff0055', '#ffbe0b', '#0a0a0a'];
+    const palettes = ['lime', 'white', 'red', 'blue', 'yellow', 'ink'];
     const layouts = ['impact', 'center', 'spread', 'scribble'];
     const variants = ['heavy', 'lean', 'wide', 'plain'];
-    const bgModes = ['solid', 'radial-glow', 'brat-matrix', 'crt-scanlines'];
+    const entries = ['rise', 'stamp', 'slide'];
 
     const newKfs = [];
     const stepLines = Math.max(2, Math.floor(lines.length / 5));
@@ -960,12 +947,9 @@
       newKfs.push({
         time: Math.round(line.time * 100) / 100,
         palette: palettes[pIdx],
-        color: colors[pIdx],
-        bgMode: bgModes[pIdx % bgModes.length],
         layout: layouts[pIdx % layouts.length],
         variant: variants[pIdx % variants.length],
-        blur: 6 + (pIdx % 4) * 2,
-        scale: 1.4 + (pIdx % 3) * 0.2,
+        entry: entries[pIdx % entries.length],
         shake: true
       });
     }
@@ -1673,17 +1657,29 @@
     }
   }
 
+  function getCleanTrackPayload() {
+    if (!state.currentTrack) return null;
+    const cleanTrack = JSON.parse(JSON.stringify(state.currentTrack));
+    cleanTrack.effects = {
+      theme: cleanTrack.effects?.theme || 'brat',
+      palette: cleanTrack.effects?.palette || 'lime',
+      bassBeats: Array.isArray(cleanTrack.effects?.bassBeats) ? cleanTrack.effects.bassBeats : [],
+      kineticSpeed: cleanTrack.effects?.kineticSpeed || 1.15
+    };
+    return {
+      found: true,
+      track: cleanTrack
+    };
+  }
+
   function openExportModal() {
     const modal = document.getElementById('modal-export');
     const preview = document.getElementById('export-json-code-preview');
     if (!modal || !state.currentTrack) return;
 
-    const payload = {
-      found: true,
-      track: state.currentTrack
-    };
+    const payload = getCleanTrackPayload();
 
-    if (preview) {
+    if (preview && payload) {
       preview.textContent = JSON.stringify(payload, null, 2);
     }
 
@@ -1692,7 +1688,8 @@
 
   function downloadJsonFile() {
     if (!state.currentTrack) return;
-    const payload = { found: true, track: state.currentTrack };
+    const payload = getCleanTrackPayload();
+    if (!payload) return;
     const jsonStr = JSON.stringify(payload, null, 2);
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -2249,37 +2246,15 @@
       }
     });
 
-    // Video Editor Color Swatches
+    // Video Editor Official Brat Color Swatches
     document.querySelectorAll('.ve-color-grid .palette-swatch-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
         if (kf) {
           kf.palette = btn.dataset.palette;
-          kf.color = btn.dataset.hex;
           renderStep3Effects();
         }
       });
-    });
-
-    // Custom Color Input
-    document.getElementById('input-kf-custom-color')?.addEventListener('input', (e) => {
-      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
-      if (kf) {
-        kf.color = e.target.value;
-        kf.palette = 'custom';
-        const hexLbl = document.getElementById('lbl-kf-color-hex');
-        if (hexLbl) hexLbl.textContent = e.target.value;
-        updateLiveCinemaStageFromKeyframes();
-      }
-    });
-
-    // Background Mode
-    document.getElementById('select-kf-bg-mode')?.addEventListener('change', (e) => {
-      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
-      if (kf) {
-        kf.bgMode = e.target.value;
-        updateLiveCinemaStageFromKeyframes();
-      }
     });
 
     // Layout Buttons
@@ -2304,42 +2279,21 @@
       });
     });
 
-    // Interactive Timeline Viewport Click to Seek
-    const tlViewport = document.getElementById('ve-timeline-viewport');
-    tlViewport?.addEventListener('click', (e) => {
-      const rect = tlViewport.getBoundingClientRect();
-      const clickX = e.clientX - rect.left - 85; // 85px is track label width
-      const laneWidth = rect.width - 85;
-      if (clickX >= 0 && laneWidth > 0) {
-        const pct = clickX / laneWidth;
-        const targetTime = pct * (state.duration || 133);
-        seekTo(targetTime);
-      }
-    });
-
-    // Step 3 Sliders
-    document.getElementById('step3-slider-blur')?.addEventListener('input', (e) => {
-      const val = parseInt(e.target.value, 10);
-      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
-      if (kf) kf.blur = val;
-      const lbl = document.getElementById('lbl-blur-val');
-      if (lbl) lbl.textContent = `${val}px`;
-      updateLiveCinemaStageFromKeyframes();
-    });
-
-    document.getElementById('step3-slider-scale')?.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
-      if (kf) kf.scale = val;
-      const lbl = document.getElementById('lbl-scale-val');
-      if (lbl) lbl.textContent = `${val}x`;
-      updateLiveCinemaStageFromKeyframes();
+    // Entry Buttons
+    document.querySelectorAll('.ve-entry-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
+        if (kf) {
+          kf.entry = btn.dataset.entry;
+          renderStep3Effects();
+        }
+      });
     });
 
     document.getElementById('step3-chk-shake')?.addEventListener('change', (e) => {
       const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
       if (kf) kf.shake = e.target.checked;
-      if (state.currentTrack) state.currentTrack.effects.shake = e.target.checked;
+      if (state.currentTrack?.effects) state.currentTrack.effects.shake = e.target.checked;
     });
 
     document.getElementById('btn-step3-clear-beats')?.addEventListener('click', () => {

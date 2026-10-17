@@ -435,39 +435,22 @@
                   </div>
                 </div>
 
-                <!-- Color Palette & Swatches -->
+                <!-- Paletas Brat Oficiales de AuraMusic -->
                 <div class="effects-field">
-                  <label>Color & Ambiente del Escenario:</label>
+                  <label>Paleta Brat Oficial:</label>
                   <div class="palette-swatches-grid ve-color-grid">
                     <button class="palette-swatch-btn swatch-lime active" data-palette="lime" data-hex="#8acf00">Lime</button>
-                    <button class="palette-swatch-btn swatch-purple" data-palette="purple" data-hex="#9d4edd">Purple</button>
-                    <button class="palette-swatch-btn swatch-cyan" data-palette="cyan" data-hex="#00f5d4">Cyan</button>
-                    <button class="palette-swatch-btn swatch-red" data-palette="red" data-hex="#ff0055">Crimson</button>
-                    <button class="palette-swatch-btn swatch-yellow" data-palette="yellow" data-hex="#ffbe0b">Gold</button>
-                    <button class="palette-swatch-btn swatch-ink" data-palette="ink" data-hex="#0a0a0a">OLED Ink</button>
-                    <button class="palette-swatch-btn swatch-white" data-palette="white" data-hex="#f8fafc">White</button>
+                    <button class="palette-swatch-btn swatch-white" data-palette="white" data-hex="#fafaf7">White</button>
+                    <button class="palette-swatch-btn swatch-red" data-palette="red" data-hex="#ed1208">Red</button>
+                    <button class="palette-swatch-btn swatch-blue" data-palette="blue" data-hex="#1500a8">Blue</button>
+                    <button class="palette-swatch-btn swatch-yellow" data-palette="yellow" data-hex="#f4ef3b">Yellow</button>
+                    <button class="palette-swatch-btn swatch-ink" data-palette="ink" data-hex="#181818">Ink</button>
                   </div>
-                  <div class="custom-color-row">
-                    <span>Color Personalizado:</span>
-                    <input type="color" id="input-kf-custom-color" value="#8acf00" />
-                    <span id="lbl-kf-color-hex">#8acf00</span>
-                  </div>
-                </div>
-
-                <!-- Stage Background Style -->
-                <div class="effects-field">
-                  <label>Efecto de Fondo en este Keyframe:</label>
-                  <select id="select-kf-bg-mode" class="select-ve">
-                    <option value="solid">Fondo Puro / OLED Minimal</option>
-                    <option value="radial-glow">Aura Radial Dinámica (Glow)</option>
-                    <option value="brat-matrix">Matriz Cinética Brat (Noise Grid)</option>
-                    <option value="crt-scanlines">Líneas de Escaneo CRT Retro</option>
-                  </select>
                 </div>
 
                 <!-- Kinetic Layout Mode -->
                 <div class="effects-field">
-                  <label>Disposición de Texto (AuraMusic Scene):</label>
+                  <label>Disposición de Texto (Layout):</label>
                   <div class="ve-layout-buttons">
                     <button class="ve-layout-btn active" data-layout="impact">Impact (Gigante)</button>
                     <button class="ve-layout-btn" data-layout="center">Center</button>
@@ -480,27 +463,29 @@
                 <div class="effects-field">
                   <label>Variante Tipográfica:</label>
                   <div class="ve-variant-buttons">
-                    <button class="ve-var-btn active" data-variant="heavy">Heavy (Black 900)</button>
+                    <button class="ve-var-btn active" data-variant="heavy">Heavy (Black 700)</button>
                     <button class="ve-var-btn" data-variant="lean">Lean (Italic)</button>
                     <button class="ve-var-btn" data-variant="wide">Wide (Espaciado)</button>
                     <button class="ve-var-btn" data-variant="plain">Plain</button>
                   </div>
                 </div>
 
-                <!-- Kinetic Blur & Scale Sliders -->
+                <!-- Word Entrance Animation -->
                 <div class="effects-field">
-                  <div class="slider-row">
-                    <label>Desenfoco Cinético (Blur): <strong id="lbl-blur-val">6px</strong></label>
-                    <input type="range" id="step3-slider-blur" min="0" max="14" step="1" value="6" />
+                  <label>Animación de Entrada de Palabras:</label>
+                  <div class="ve-variant-buttons" id="ve-entry-buttons">
+                    <button class="ve-entry-btn active" data-entry="rise">Rise (Subida)</button>
+                    <button class="ve-entry-btn" data-entry="stamp">Stamp (Impacto)</button>
+                    <button class="ve-entry-btn" data-entry="slide">Slide (Deslizamiento)</button>
                   </div>
-                  <div class="slider-row">
-                    <label>Escala de Palabras Clave: <strong id="lbl-scale-val">1.5x</strong></label>
-                    <input type="range" id="step3-slider-scale" min="1.0" max="2.2" step="0.1" value="1.5" />
-                  </div>
+                </div>
+
+                <!-- Golpes 808 info -->
+                <div class="effects-field">
                   <div class="checkbox-row">
                     <label class="custom-chk">
                       <input type="checkbox" id="step3-chk-shake" checked />
-                      <span>Sacudida de pantalla (Screen Shake) en 808</span>
+                      <span>Efectos 808 Activos (Flash Rave, Salto de Grano y Shockwave)</span>
                     </label>
                   </div>
                 </div>

@@ -472,83 +472,14 @@
     ],
     "effects": {
       "theme": "brat",
-      "blur": 6,
-      "scale": 1.5,
-      "shake": true,
-      "kineticSpeed": 1.15,
-      "palette": "ink",
+      "palette": "lime",
       "bassBeats": [
         38.91, 41.56, 46.96, 49.85, 52.71, 58.07,
         61.02, 64.10, 67.10, 72.13, 75.02, 78.20,
         110.56, 113.16, 117.04, 119.71, 125.07, 128.11,
         131.32, 136.15, 139.44, 142.01, 147.15
       ],
-      "keyframes": [
-        {
-          "time": 0.0,
-          "palette": "ink",
-          "color": "#00f5d4",
-          "bgMode": "radial-glow",
-          "layout": "center",
-          "variant": "lean"
-        },
-        {
-          "time": 23.0,
-          "palette": "purple",
-          "color": "#9d4edd",
-          "bgMode": "radial-glow",
-          "layout": "spread",
-          "variant": "wide"
-        },
-        {
-          "time": 38.9,
-          "palette": "red",
-          "color": "#ff0055",
-          "bgMode": "brat-matrix",
-          "layout": "impact",
-          "variant": "heavy"
-        },
-        {
-          "time": 61.0,
-          "palette": "cyan",
-          "color": "#00f5d4",
-          "bgMode": "radial-glow",
-          "layout": "center",
-          "variant": "heavy"
-        },
-        {
-          "time": 85.5,
-          "palette": "yellow",
-          "color": "#ffbe0b",
-          "bgMode": "radial-glow",
-          "layout": "spread",
-          "variant": "lean"
-        },
-        {
-          "time": 110.5,
-          "palette": "purple",
-          "color": "#c77dff",
-          "bgMode": "brat-matrix",
-          "layout": "impact",
-          "variant": "wide"
-        },
-        {
-          "time": 117.0,
-          "palette": "lime",
-          "color": "#8acf00",
-          "bgMode": "brat-matrix",
-          "layout": "impact",
-          "variant": "heavy"
-        },
-        {
-          "time": 147.0,
-          "palette": "ink",
-          "color": "#8acf00",
-          "bgMode": "solid",
-          "layout": "center",
-          "variant": "lean"
-        }
-      ]
+      "kineticSpeed": 1.15
     }
   }
 }
