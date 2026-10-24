@@ -30,6 +30,8 @@ for(const width of [1920,1366,780,390])test(`Studio preview, inspector and draft
     return {ok:false,json:async()=>({})};
   };
   ${read('brat-effects.js')}
+  ${read('lyrics-timing.js')}
+  ${read('brat-scenes.js')}
   ${instrumented}
   const wait=ms=>new Promise(r=>setTimeout(r,ms)),checks=[],check=(name,pass)=>checks.push({name,pass:!!pass});
   addEventListener('DOMContentLoaded',()=>setTimeout(async()=>{try{

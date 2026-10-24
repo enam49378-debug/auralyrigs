@@ -369,7 +369,7 @@
     state.duration = Number(state.currentTrack.duration)>0 ? Number(state.currentTrack.duration) : Math.max(10,...state.currentTrack.lines.map(line=>Number(line.time)+4));
     state.currentTime = 0; state.selectedVerseIndex = 0; state.selectedKeyframeIndex = 0;
     state.lastActiveVerseIdx = -1; state.lastActiveWordIdx = -1; state.activeBeatIndex = -1;
-    lastBratVerseIdx = -1; previewLayoutSignature = '';
+    resetBratStage(); lastBeatCheckTime = -1; bratLastRenderTime = -1; previewLayoutSignature = '';
     normalizeTrackEffects(); updateTotalTimeDisplay(state.duration); updateDockProgress(0);
 
     // Auto-populate words if missing using AuraMusic syllable timing
@@ -426,6 +426,33 @@
     if (switchView) {
       switchViewMode('editor');
       switchStep(initialStep);
+    }
+
+    // Una ficha sin letra (solo efectos) trae sus versos de LRCLIB al abrirse.
+    if (!state.currentTrack.lines.length) autoImportMissingLyrics(generation);
+  }
+
+  async function autoImportMissingLyrics(generation) {
+    const track = state.currentTrack;
+    if (!track?.title) return;
+    try {
+      const result = await fetchLrclibLyrics(track.title, track.artist, state.duration);
+      if (generation !== openTrackGeneration || state.currentTrack !== track || track.lines.length) return;
+      if (!result?.lines?.length) return;
+      track.lines = result.lines;
+      track.lines.forEach((line, idx) => {
+        if (!Array.isArray(line.words) || !line.words.length) {
+          const nextTime = idx < track.lines.length - 1 ? track.lines[idx + 1].time : line.time + 3.5;
+          line.words = estimateWordsForLine(line.text, line.time, nextTime, state.syllablePace || 0.35);
+        }
+      });
+      renderStep1Verses();
+      renderStep2VerseDropdown();
+      renderStep2WordsStage();
+      renderStep3Effects();
+      resetBratStage();
+    } catch (_) {
+      // Sin conexión o sin resultados: el usuario aún puede importar o pegar la letra a mano.
     }
   }
 
@@ -1137,10 +1164,8 @@
     if (activeIdx !== state.lastActiveVerseIdx) {
       state.lastActiveVerseIdx = activeIdx;
       highlightActiveVerseInStep1();
-      renderCinemaStageActiveLine(activeIdx, curT);
-    } else if (activeIdx >= 0) {
-      renderCinemaStageActiveLine(activeIdx, curT);
     }
+    renderBratStage(curT);
   }
 
   function highlightActiveVerseInStep1() {
@@ -1197,80 +1222,214 @@
     });
   }
 
-  let lastBratVerseIdx = -1;
+  /* Motor de frases Brat: mismo análisis (LyricsTiming) y agrupación (BratScenes) que AuraMusic. */
+  let bratPlanSignature = '';
+  let bratPlanCheckedAt = 0;
+  let bratPhrases = [];
+  let bratSceneByPhrase = [];
+  let bratSceneStart = -1;
+  let bratTokens = [];
+  let bratWordTimes = [];
+  let bratScenePhrases = [];
+  let bratShownIdle = '';
 
-  function renderCinemaStageActiveLine(activeIdx, curT) {
-    const stageText = document.getElementById('step3-stage-brat-text') || document.getElementById('step3-stage-active-line');
-    if (!stageText || !state.currentTrack) return;
+  function resetBratStage() {
+    bratPlanSignature = '';
+    bratPlanCheckedAt = 0;
+    bratPhrases = [];
+    bratSceneByPhrase = [];
+    bratSceneStart = -1;
+    bratShownIdle = '';
+    const text = document.getElementById('step3-stage-brat-text');
+    if (text) { text.dataset.bratCount = ''; text.dataset.bratActivePhrase = ''; }
+  }
 
-    if (activeIdx < 0 || activeIdx >= state.currentTrack.lines.length) {
-      stageText.innerHTML = `<span class="brat-word brat-word--active"><span class="brat-word-ink">AURALYRICS</span></span>`;
-      lastBratVerseIdx = -1;
-      stageText.dataset.bratCount='0'; delete stageText.dataset.wordsSignature;
-      fitBratText(stageText.textContent,stageText);
-      return;
+  function getBratContextSymbol(text) {
+    const raw = String(text || '');
+    const value = raw.toLocaleLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
+    if (/[?¿]/u.test(raw)) return /¿/u.test(raw) ? '¿?' : '?';
+    if (/\b(llor\w*|trist\w*|cry\w*|sad|tears|dolor|broken|perdi\w*)\b/u.test(value)) return ':(';
+    if (/\b(feliz|alegr\w*|happy|smil\w*|sonri\w*|bien|good|reir|laugh)\b/u.test(value)) return ':)';
+    if (/\b(enoja\w*|odio|hate|angry|rabia|furia)\b/u.test(value)) return '>:/';
+    if (/\b(amor|love|heart|corazon|beso|kiss|te quiero)\b/u.test(value)) return '♡';
+    if (/\b(solo|sola|alone|silencio|quiet|vacio)\b/u.test(value)) return ':|';
+    if (/[!¡]/u.test(raw)) return /¡/u.test(raw) ? '¡!' : '!';
+    if (/\b(noche|night|luna|moon|oscuro|dark)\b/u.test(value)) return '◐';
+    if (/\b(musica|ritmo|baila\w*|music|dance|sing\w*)\b/u.test(value)) return '♪';
+    if (/\b(vamos|corre\w*|run|fly|vuela\w*|seguir)\b/u.test(value)) return '→';
+    return '';
+  }
+
+  function bratSourceLines() {
+    return (state.currentTrack?.lines || []).map(line => ({
+      time: Number(line.time),
+      text: line.text,
+      words: (Array.isArray(line.words) ? line.words : []).map(word => ({
+        text: word.word ?? word.text ?? '',
+        time: Number(word.start ?? word.time),
+        end: Number(word.end)
+      }))
+    }));
+  }
+
+  function prepareBratPlan() {
+    const timing = window.AuraMusic?.LyricsTiming;
+    const scenes = window.AuraMusic?.BratScenes;
+    if (!timing || !scenes) return;
+    const lines = bratSourceLines();
+    const compiled = timing.compile(lines, { duration: state.duration });
+    const phrases = [];
+    lines.forEach((line, lineIndex) => {
+      const info = compiled[lineIndex];
+      if (!info?.words.length) return;
+      for (const range of info.phrases) {
+        const part = info.tokens.slice(range.start, range.end);
+        const text = part.join('').trim();
+        const symbol = getBratContextSymbol(text);
+        if (symbol && !/^[?!¿¡]+$/u.test(symbol)) part[part.length - 1] = part[part.length - 1].trimEnd() + ` ${symbol} `;
+        phrases.push({
+          tokens: part,
+          times: info.words.slice(range.start, range.end).map(word => word.time),
+          ends: info.words.slice(range.start, range.end).map(word => word.end),
+          time: range.time, end: range.finish, text, lineIndex, symbol, special: false
+        });
+      }
+    });
+    const seed = `${state.currentTrack.videoId || ''}:${state.currentTrack.title || ''}`;
+    const plan = scenes.plan(phrases, seed);
+    bratPhrases = plan.phrases;
+    bratSceneByPhrase = new Array(bratPhrases.length);
+    for (const scene of plan.scenes) {
+      scene.data = buildBratScene(scene);
+      for (let i = scene.start; i <= scene.end; i++) bratSceneByPhrase[i] = scene;
     }
+    bratSceneStart = -1;
+  }
 
-    const line = state.currentTrack.lines[activeIdx];
-    const words = line.words || distributeWordsForLine(line.text, line.time, line.time + 3.5);
+  function buildBratScene(scene) {
+    const tokens = [], times = [], phrases = [];
+    for (let i = scene.start; i <= scene.end; i++) {
+      const phrase = bratPhrases[i];
+      const part = phrase.tokens.slice();
+      times.push(...phrase.times);
+      const start = tokens.length;
+      if (part.length && i < scene.end) part[part.length - 1] += ' ';
+      tokens.push(...part);
+      phrases.push({ time: phrase.time, start, end: tokens.length, symbol: phrase.symbol, text: phrase.text });
+    }
+    return { tokens, times, phrases };
+  }
 
-    const signature=JSON.stringify(words);
-    if (activeIdx !== lastBratVerseIdx || stageText.dataset.wordsSignature!==signature) {
-      stageText.dataset.wordsSignature=signature;
-      lastBratVerseIdx = activeIdx;
+  // Detecta cambios de letra/palabras sin recalcular en cada frame.
+  function ensureBratPlan() {
+    const now = performance.now();
+    if (bratPlanSignature && now - bratPlanCheckedAt < 300) return;
+    bratPlanCheckedAt = now;
+    const signature = JSON.stringify([state.duration, bratSourceLines()]);
+    if (signature === bratPlanSignature) return;
+    bratPlanSignature = signature;
+    prepareBratPlan();
+  }
+
+  function setBratIdleText(stageText, message) {
+    if (bratShownIdle === message && stageText.dataset.bratCount === 'idle') return;
+    bratShownIdle = message;
+    bratSceneStart = -1;
+    stageText.replaceChildren();
+    const span = document.createElement('span');
+    span.className = 'brat-word brat-word--active';
+    const ink = document.createElement('span');
+    ink.className = 'brat-word-ink';
+    ink.textContent = message;
+    span.appendChild(ink);
+    stageText.appendChild(span);
+    stageText.dataset.bratCount = 'idle';
+    stageText.dataset.bratActivePhrase = '';
+    fitBratText(message, stageText);
+  }
+
+  function renderBratWords(stageText, count, activePhrase, previousCount, allowAnimation = true) {
+    let words = stageText.querySelectorAll('.brat-word');
+    if (words.length !== bratTokens.length) {
       stageText.replaceChildren();
-
-      words.forEach(w => {
+      bratTokens.forEach(token => {
         const span = document.createElement('span');
         span.className = 'brat-word is-hidden';
         const ink = document.createElement('span');
         ink.className = 'brat-word-ink';
-        ink.textContent = w.word || w.text || '';
+        ink.textContent = token.trimEnd();
         span.appendChild(ink);
-        span.appendChild(document.createTextNode(' '));
-        span.addEventListener('animationend', (e) => {
-          if (e.target === ink) span.classList.remove('brat-word--new');
+        span.addEventListener('animationend', event => {
+          if (event.target === ink) span.classList.remove('brat-word--new');
         });
+        const spacing = token.match(/\s+$/u)?.[0];
+        if (spacing) span.appendChild(document.createTextNode(spacing));
         stageText.appendChild(span);
       });
-
-      fitBratText(line.text, stageText);
-      stageText.dataset.bratCount = '0';
+      words = stageText.querySelectorAll('.brat-word');
     }
-
-    updateCinemaStageWordHighlight(activeIdx, curT);
+    const animateFew = allowAnimation && count - previousCount > 0 && count - previousCount <= 2 &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    words.forEach((span, i) => {
+      const revealed = i < count;
+      const wasHidden = span.classList.contains('is-hidden');
+      span.classList.toggle('is-hidden', !revealed);
+      if (revealed && wasHidden && animateFew) span.classList.add('brat-word--new');
+      else if (!allowAnimation || !revealed || i < activePhrase.start) span.classList.remove('brat-word--new');
+      span.classList.toggle('brat-word--active', i >= activePhrase.start && i < activePhrase.end);
+      span.classList.toggle('brat-word--past', i < activePhrase.start);
+    });
   }
 
-  function updateCinemaStageWordHighlight(activeIdx, curT) {
-    const stageText = document.getElementById('step3-stage-brat-text') || document.getElementById('step3-stage-active-line');
-    if (!stageText || !state.currentTrack || activeIdx < 0) return;
+  let bratLastRenderTime = -1;
+  function renderBratStage(curT) {
+    const stageText = document.getElementById('step3-stage-brat-text');
+    const timing = window.AuraMusic?.LyricsTiming;
+    if (!stageText || !state.currentTrack || !timing) return;
+    ensureBratPlan();
 
-    const line = state.currentTrack.lines[activeIdx];
-    const words = line.words || [];
+    const title = `${state.currentTrack.title || 'AuraLyrics'}${state.currentTrack.artist ? ' - ' + state.currentTrack.artist : ''}`;
+    if (!bratPhrases.length) { setBratIdleText(stageText, state.currentTrack.title ? title : 'AURALYRICS'); return; }
+    const phraseIndex = timing.upperBound(bratPhrases, curT, phrase => phrase.time) - 1;
+    if (phraseIndex < 0) { setBratIdleText(stageText, title); return; }
 
-    let count = 0;
-    for (let i = 0; i < words.length; i++) {
-      if (curT >= (words[i].start ?? words[i].time)) {
-        count = i + 1;
-      } else {
-        break;
-      }
+    const continuous = bratLastRenderTime >= 0 && curT >= bratLastRenderTime && curT - bratLastRenderTime < .4;
+    bratLastRenderTime = curT;
+    const scene = bratSceneByPhrase[phraseIndex];
+    if (scene.start !== bratSceneStart) {
+      bratSceneStart = scene.start;
+      bratShownIdle = '';
+      bratTokens = scene.data.tokens;
+      bratWordTimes = scene.data.times;
+      bratScenePhrases = scene.data.phrases;
+      stageText.dataset.bratCount = '';
+      stageText.dataset.bratActivePhrase = '';
+      stageText.replaceChildren();
+      renderBratWords(stageText, 0, bratScenePhrases[0], 0, false);
+      fitBratText(bratTokens.join('').trimEnd(), stageText);
     }
 
-    const prevCount = parseInt(stageText.dataset.bratCount || '0', 10);
-    if (count !== prevCount) {
+    const currentPhrase = bratScenePhrases[phraseIndex - scene.start];
+    const count = timing.upperBound(bratWordTimes, curT);
+    const previousCount = Number(stageText.dataset.bratCount) || 0;
+    if (count !== previousCount || stageText.dataset.bratActivePhrase !== String(phraseIndex)) {
       stageText.dataset.bratCount = String(count);
-      renderBratWords(stageText, count, prevCount, state.isPlaying && count>prevCount);
+      stageText.dataset.bratActivePhrase = String(phraseIndex);
+      renderBratWords(stageText, count, currentPhrase, previousCount, continuous && state.isPlaying);
     }
   }
 
+  let lastBeatCheckTime = -1;
   function checkAndTriggerBeats(curT) {
+    const previous = lastBeatCheckTime;
+    lastBeatCheckTime = curT;
     if (!state.currentTrack || getActiveKeyframeAtTime(curT)?.shake === false) return;
     const beats = state.currentTrack.effects.bassBeats || [];
-    for (let i=0;i<beats.length;i++) {
-      if (Math.abs(curT-beats[i])<.08 && i!==state.activeBeatIndex) {
-        state.activeBeatIndex=i; triggerStageBeatHit(); break;
-      }
+    // Un golpe cuenta si el reloj lo cruzó desde el último chequeo (avance normal) o cae a ±80 ms.
+    const forward = previous >= 0 && curT > previous && curT - previous < .6;
+    for (let i = 0; i < beats.length; i++) {
+      const crossed = forward ? beats[i] > previous - .02 && beats[i] <= curT + .02 : Math.abs(curT - beats[i]) < .08;
+      if (crossed && i !== state.activeBeatIndex) { state.activeBeatIndex = i; triggerStageBeatHit(); break; }
     }
   }
 

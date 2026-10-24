@@ -284,7 +284,7 @@ function createServer({ databaseDir = DB_DIR } = {}) {
 
     // Serve public assets only; never expose .git, source server files or private files.
     if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405); res.end(); return; }
-    const allowed = new Set(['/', '/index.html', '/studio.css', '/editor-layout.css', '/studio.js', '/brat-effects.js']);
+    const allowed = new Set(['/', '/index.html', '/studio.css', '/editor-layout.css', '/studio.js', '/brat-effects.js', '/lyrics-timing.js', '/brat-scenes.js']);
     if (!allowed.has(pathname) && !/^\/database\/[a-zA-Z0-9_-]+\.json$/.test(pathname)) {
       res.writeHead(404); res.end('Archivo no encontrado'); return;
     }

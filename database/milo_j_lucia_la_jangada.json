@@ -124,7 +124,7 @@
           "layout": "center",
           "variant": "lean",
           "entry": "rise",
-          "shake": false
+          "shake": true
         },
         {
           "time": 117.16,
