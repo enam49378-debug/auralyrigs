@@ -55,7 +55,17 @@
     for (const frame of frames || []) { if (frame.time>position) break; selected=frame; }
     return selected;
   }
-  const api=Object.freeze({palettes,layouts,variants,entries,keyframes,normalize,active});
+  // Índice del golpe 808 que el reloj acaba de cruzar (o -1). Con avance normal cuenta cualquier golpe entre
+  // la lectura anterior y la actual, así un reloj que avanza a saltos nunca se salta uno.
+  function crossedBeat(beats, previous, position, lastIndex = -1) {
+    const forward = previous >= 0 && position > previous && position - previous < .6;
+    for (let i = 0; i < (beats || []).length; i++) {
+      const hit = forward ? beats[i] > previous - .02 && beats[i] <= position + .02 : Math.abs(position - beats[i]) < .08;
+      if (hit && i !== lastIndex) return i;
+    }
+    return -1;
+  }
+  const api=Object.freeze({palettes,layouts,variants,entries,keyframes,normalize,active,crossedBeat});
   if (typeof module==='object' && module.exports) module.exports=api;
   else root.AuraLyricsEffects=api;
 })(typeof window==='undefined'?globalThis:window);

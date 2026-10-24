@@ -36,3 +36,13 @@ test('scene lookup changes exactly at its timestamp and has a neutral gap before
   assert.equal(effects.active(frames,9.99).palette,'red');
   assert.equal(effects.active(frames,10).palette,'white');
 });
+
+test('crossedBeat catches a beat between two coarse clock readings and never repeats it',()=>{
+  const beats=[1,2.5,4];
+  assert.equal(effects.crossedBeat(beats,.7,1.2),0,'beat inside the step');
+  assert.equal(effects.crossedBeat(beats,.7,1.2,0),-1,'same beat is not repeated');
+  assert.equal(effects.crossedBeat(beats,1.2,2.4),-1,'no beat in the step');
+  assert.equal(effects.crossedBeat(beats,-1,4.05),2,'after a seek only a nearby beat counts');
+  assert.equal(effects.crossedBeat(beats,-1,3),-1);
+  assert.equal(effects.crossedBeat([],0,1),-1);
+});
