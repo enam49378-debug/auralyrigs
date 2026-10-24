@@ -104,3 +104,14 @@ node tools/analyze-audio.cjs cancion.mp3 database/artista_cancion.json --write  
 ```
 
 Opciones: `--beats-only`, `--words-only`, `--window 0.12`. La ficha debe tener la letra guardada. Sin ese audio, los tiempos siguen siendo estimaciones.
+
+### Alineación con voz (más fiable)
+
+`tools/align_voice.py` usa Whisper (faster-whisper, local) para escuchar la voz y copiar sus tiempos a la letra conocida. Reconoce con tolerancia a errores y no confunde estribillos repetidos (solo acepta coincidencias cerca del tiempo esperado). No guarda nada si coincide muy poca letra.
+
+```bash
+python tools/align_voice.py cancion.mp3 database/artista_cancion.json          # vista previa
+python tools/align_voice.py cancion.mp3 database/artista_cancion.json --write  # guarda
+```
+
+Requiere `pip install faster-whisper` y ffmpeg. Con GPU necesita las librerías CUDA (cuBLAS); si no están, usa la CPU. Las palabras que Whisper no reconoce se reparten entre sus vecinas y quedan marcadas como `estimated`.

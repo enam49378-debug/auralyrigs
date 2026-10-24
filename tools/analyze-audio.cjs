@@ -4,7 +4,7 @@
 //
 //   node tools/analyze-audio.cjs cancion.mp3 database/artista_cancion.json            (vista previa)
 //   node tools/analyze-audio.cjs cancion.mp3 database/artista_cancion.json --write    (guarda cambios)
-//   Opciones: --beats-only | --words-only | --window 0.12 | --density 0.2 (fracción de golpes de bajo que se conserva)
+//   Opciones: --beats-only | --words-only | --window 0.12 | --density 0.2 (fracción de golpes de bajo que se conserva) | --force
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
@@ -119,6 +119,18 @@ function snapWords(lines, onsets, { window = .12 } = {}) {
   return { moved, total };
 }
 
+// ¿Las palabras caen más cerca de un ataque que si estuvieran corridas? Si no, el audio es demasiado denso
+// (voz mezclada con instrumentos) y mover palabras a "el ataque más cercano" sería ruido.
+function alignmentEvidence(lines, onsets) {
+  const starts = lines.flatMap(line => (line.words || []).map(word => Number(word.start ?? word.time))).filter(Number.isFinite);
+  if (!starts.length || !onsets.length) return { ratio: 1, actual: 0, control: 0 };
+  const near = t => onsets.reduce((best, onset) => Math.min(best, Math.abs(onset.time - t)), Infinity);
+  const mean = values => values.reduce((sum, value) => sum + value, 0) / values.length;
+  const actual = mean(starts.map(near));
+  const control = mean([.12, .2, -.12, -.2].flatMap(offset => starts.map(t => near(t + offset))));
+  return { ratio: actual / control, actual, control };
+}
+
 function run(argv) {
   const positional = argv.filter(arg => !arg.startsWith('--'));
   const flag = name => argv.includes('--' + name);
@@ -145,10 +157,17 @@ function run(argv) {
   }
   if (!flag('beats-only')) {
     const onsets = detectOnsets(decode(audio, 'highpass=f=200,lowpass=f=4000'));
-    const stats = snapWords(track.lines || [], onsets, { window: windowSize });
-    result.words = stats;
-    console.log(`   Palabras ajustadas al audio: ${stats.moved} de ${stats.total} (ataques detectados: ${onsets.length})`);
-    if (!stats.total) console.log('   (La ficha no tiene letra todavía: impórtala en el Studio y guárdala primero.)');
+    const evidence = alignmentEvidence(track.lines || [], onsets);
+    if (evidence.ratio > .75 && !flag('force')) {
+      console.log(`   ⚠️  No se movieron palabras: con ${onsets.length} ataques detectados el audio es demasiado denso y las palabras no caen más cerca de un ataque que un desplazamiento al azar (distancia ${evidence.actual.toFixed(3)} s contra ${evidence.control.toFixed(3)} s).`);
+      console.log('       Mover palabras así sería ruido. Usa --force para aplicarlo igual, o alinea con un separador de voz o un alineador forzado.');
+      result.words = { moved: 0, total: 0, skipped: true };
+    } else {
+      const stats = snapWords(track.lines || [], onsets, { window: windowSize });
+      result.words = stats;
+      console.log(`   Palabras ajustadas al audio: ${stats.moved} de ${stats.total} (ataques detectados: ${onsets.length})`);
+      if (!stats.total) console.log('   (La ficha no tiene letra todavía: impórtala en el Studio y guárdala primero.)');
+    }
   }
   if (flag('write')) {
     fs.writeFileSync(jsonFile, JSON.stringify(data, null, 2));
@@ -160,4 +179,4 @@ function run(argv) {
 }
 
 if (require.main === module) run(process.argv.slice(2));
-module.exports = { detectOnsets, detectBassBeats, snapWords, energyEnvelope };
+module.exports = { detectOnsets, detectBassBeats, snapWords, energyEnvelope, alignmentEvidence };
