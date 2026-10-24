@@ -15,7 +15,10 @@ test('local server saves supported scenes and serves only public assets',async t
   const saved=await fetch(base+'/api/lyrics/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   assert.equal(saved.status,200);
   const file=(await saved.json()).fileName;
-  const stored=JSON.parse(fs.readFileSync(path.join(dir,file),'utf8'));
+  const stored=JSON.parse(fs.readFileSync(path.join(dir,'private',file),'utf8'));
+  const published=JSON.parse(fs.readFileSync(path.join(dir,file),'utf8'));
+  assert.equal(published.track.lines.length,0,'public file never carries lyric text');
+  assert.ok(!JSON.stringify(published).includes('Prueba'));
   assert.equal(stored.track.humanReviewed,true);
   assert.equal(stored.track.effects.keyframes[0].shake,false);
   assert.equal(stored.track.effects.bgMode,undefined);

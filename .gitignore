@@ -7,3 +7,5 @@ Thumbs.db
 .vscode/
 # Capturas y resultados de pruebas locales
 tests/artifacts/
+# Letras completas: nunca se suben
+private/

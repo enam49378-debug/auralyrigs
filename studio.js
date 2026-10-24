@@ -439,7 +439,15 @@
       const result = await fetchLrclibLyrics(track.title, track.artist, state.duration);
       if (generation !== openTrackGeneration || state.currentTrack !== track || track.lines.length) return;
       if (!result?.lines?.length) return;
-      track.lines = result.lines;
+      if (track.timing && window.AuraMusic?.PublishedTiming) {
+        // Ficha pública: la letra llega de LRCLIB y los tiempos revisados se aplican a las líneas que coinciden.
+        const merged = window.AuraMusic.PublishedTiming.merge(result.lines, track.timing);
+        track.lines = merged.lines.map(line => line.isPersonalServer && Array.isArray(line.words)
+          ? { ...line, type: line.type || 'vocal', words: line.words.map(word => ({ word: word.text, start: word.time, end: word.end, estimated: false })) }
+          : line);
+      } else {
+        track.lines = result.lines;
+      }
       track.lines.forEach((line, idx) => {
         if (!Array.isArray(line.words) || !line.words.length) {
           const nextTime = idx < track.lines.length - 1 ? track.lines[idx + 1].time : line.time + 3.5;

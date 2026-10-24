@@ -4,9 +4,12 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const BratEffects = require('./brat-effects.js');
+const PublishedTiming = require('./published-timing.js');
 
 const PORT = process.env.PORT || 3000;
 const DB_DIR = path.join(__dirname, 'database');
+// Letras completas: solo en tu PC (carpeta ignorada por git). `database/` es público y solo lleva tiempos.
+const PRIVATE_DIR = path.join(__dirname, 'private');
 const PUBLIC_DIR = __dirname;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
@@ -75,7 +78,7 @@ function loadDatabaseTracks(directory = DB_DIR) {
         artist: track.artist || '',
         videoId: track.videoId || '',
         duration: track.duration || 0,
-        linesCount: Array.isArray(track.lines) ? track.lines.length : 0,
+        linesCount: Array.isArray(track.lines) && track.lines.length ? track.lines.length : (track.timing?.lines?.length || 0),
         hasBratEffects: !!(track.effects && track.effects.theme === 'brat'),
         humanReviewed: !!track.humanReviewed,
         raw: data
@@ -87,6 +90,14 @@ function loadDatabaseTracks(directory = DB_DIR) {
     }
   }
   return tracks;
+}
+
+// Fichas completas (privadas) tienen prioridad sobre las públicas de igual nombre.
+function loadAllTracks(publicDir, privateDir) {
+  const byName = new Map();
+  for (const track of loadDatabaseTracks(publicDir)) byName.set(track.fileName, track);
+  if (privateDir) for (const track of loadDatabaseTracks(privateDir)) byName.set(track.fileName, track);
+  return [...byName.values()];
 }
 
 // Prioriza coincidencia exacta de título+artista sobre coincidencias parciales.
@@ -144,9 +155,11 @@ function cleanLines(lines) {
     .sort((a, b) => a.time - b.time);
 }
 
-function createServer({ databaseDir = DB_DIR } = {}) {
+function createServer({ databaseDir = DB_DIR, privateDir } = {}) {
   const DB_DIR = databaseDir;
+  const PRIVATE = privateDir || (databaseDir === path.join(__dirname, 'database') ? PRIVATE_DIR : path.join(databaseDir, 'private'));
   fs.mkdirSync(DB_DIR, { recursive: true });
+  fs.mkdirSync(PRIVATE, { recursive: true });
   return http.createServer((req, res) => {
     // Configuración de encabezados CORS globales para YouTube Music Extension
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -176,7 +189,7 @@ function createServer({ databaseDir = DB_DIR } = {}) {
 
     // 1. Healthcheck / Status API
     if (pathname === '/api/status') {
-      const tracks = loadDatabaseTracks(DB_DIR);
+      const tracks = loadAllTracks(DB_DIR, PRIVATE);
       sendJson(req, res, 200, {
         ok: true,
         name: 'AuraLyrics Studio',
@@ -191,7 +204,7 @@ function createServer({ databaseDir = DB_DIR } = {}) {
     // 2. Obtener Letras Sincronizadas (API consumida por AuraMusic)
     // GET /api/lyrics/get?title=...&artist=...&videoId=...
     if (pathname === '/api/lyrics/get') {
-      const matched = findTrack(loadDatabaseTracks(DB_DIR), {
+      const matched = findTrack(loadAllTracks(DB_DIR, PRIVATE), {
         title: parsedUrl.searchParams.get('title') || '',
         artist: parsedUrl.searchParams.get('artist') || '',
         videoId: (parsedUrl.searchParams.get('videoId') || '').trim()
@@ -202,7 +215,7 @@ function createServer({ databaseDir = DB_DIR } = {}) {
 
     // 3. Listar Canciones en la Base de Datos
     if (pathname === '/api/lyrics/list') {
-      const tracks = loadDatabaseTracks(DB_DIR).map(catalogEntry);
+      const tracks = loadAllTracks(DB_DIR, PRIVATE).map(catalogEntry);
       sendJson(req, res, 200, { success: true, count: tracks.length, tracks });
       return;
     }
@@ -252,8 +265,14 @@ function createServer({ databaseDir = DB_DIR } = {}) {
             }
           };
 
-          writeFileAtomic(filePath, JSON.stringify(formatted, null, 2));
-          console.log(`✨ AuraLyrics: Letra guardada con éxito en ${filename}`);
+          // La ficha completa (con letra) queda privada; la pública solo lleva tiempos y efectos.
+          writeFileAtomic(path.join(PRIVATE, filename), JSON.stringify(formatted, null, 2));
+          const publicVersion = {
+            ...formatted,
+            track: { ...formatted.track, lines: [], timing: PublishedTiming.extract(formatted.track) }
+          };
+          writeFileAtomic(filePath, JSON.stringify(publicVersion, null, 2));
+          console.log(`✨ AuraLyrics: guardada ${filename} (letra completa en private/, tiempos en database/)`);
 
           // Actualizar automáticamente catalog.json para GitHub Pages
           try {
@@ -284,7 +303,7 @@ function createServer({ databaseDir = DB_DIR } = {}) {
 
     // Serve public assets only; never expose .git, source server files or private files.
     if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405); res.end(); return; }
-    const allowed = new Set(['/', '/index.html', '/studio.css', '/editor-layout.css', '/studio.js', '/brat-effects.js', '/lyrics-timing.js', '/brat-scenes.js']);
+    const allowed = new Set(['/', '/index.html', '/studio.css', '/editor-layout.css', '/studio.js', '/brat-effects.js', '/lyrics-timing.js', '/brat-scenes.js', '/published-timing.js']);
     if (!allowed.has(pathname) && !/^\/database\/[a-zA-Z0-9_-]+\.json$/.test(pathname)) {
       res.writeHead(404); res.end('Archivo no encontrado'); return;
     }
