@@ -62,6 +62,23 @@
     }
   ];
 
+  const BratEffects = window.AuraLyricsEffects;
+  const getOfficialBratDefaultKeyframes = () => BratEffects.keyframes([]);
+  let openTrackGeneration = 0;
+  let previewBeatTimer = null;
+  let previewLayoutSignature = '';
+
+  function normalizeTrackEffects() {
+    if (!state.currentTrack) return;
+    const selected = state.currentTrack.effects?.keyframes?.[state.selectedKeyframeIndex];
+    state.currentTrack.effects = BratEffects.normalize(state.currentTrack.effects,state.currentTrack.duration);
+    if (selected) {
+      const index = state.currentTrack.effects.keyframes.findIndex(kf => kf.time === selected.time);
+      if (index >= 0) state.selectedKeyframeIndex = index;
+    }
+    state.selectedKeyframeIndex = Math.min(state.selectedKeyframeIndex, state.currentTrack.effects.keyframes.length-1);
+  }
+
   /* =========================================================================
      1. INITIALIZATION & ROUTING
      ========================================================================= */
@@ -74,7 +91,7 @@
   // YouTube IFrame API Callback
   window.onYouTubeIframeAPIReady = () => {
     console.log('🎬 AuraLyrics: YouTube IFrame API Listo');
-    createYouTubePlayer('WJW-VvmRKsE');
+    createYouTubePlayer(state.currentTrack?.videoId || 'WJW-VvmRKsE');
   };
 
   function createYouTubePlayer(videoId) {
@@ -82,6 +99,7 @@
       try { state.ytPlayer.destroy(); } catch (_) {}
     }
 
+    state.isYtReady = false;
     const cleanVideoId = videoId || 'WJW-VvmRKsE';
 
     // Actualizar botón para abrir SIEMPRE en YouTube Music (nunca en YouTube estándar)
@@ -111,18 +129,21 @@
   }
 
   function onPlayerReady(event) {
+    if(event.target && event.target!==state.ytPlayer)return;
     state.isYtReady = true;
     try {
       const dur = state.ytPlayer.getDuration();
       if (dur && dur > 0) {
         state.duration = dur;
         updateTotalTimeDisplay(dur);
+        if (state.currentTrack) state.currentTrack.duration = dur;
       }
     } catch (_) {}
     console.log('🎬 AuraLyrics: Reproductor YouTube acoplado con éxito');
   }
 
   function onPlayerStateChange(event) {
+    if (event.target && event.target !== state.ytPlayer) return;
     if (event.data === YT.PlayerState.PLAYING) {
       state.isPlaying = true;
       updatePlayPauseIcons(true);
@@ -138,8 +159,16 @@
      2. LIBRARY (CARDS MENU) VIEW LOGIC
      ========================================================================= */
 
+  function readLocalDrafts() {
+    try { const saved=JSON.parse(localStorage.getItem('auralyrics_cloud_tracks') || '[]'); return Array.isArray(saved)?saved:[]; }
+    catch (_) { return []; }
+  }
+  function sameTrack(a,b) {
+    return a.videoId && b.videoId ? a.videoId===b.videoId : a.title===b.title && a.artist===b.artist;
+  }
+
   function isCloudMode() {
-    return window.location.hostname.includes('github.io') || window.location.protocol === 'file:' || window.location.port !== '3000';
+    return !['localhost','127.0.0.1','[::1]'].includes(window.location.hostname);
   }
 
   function updateServerStatusBadge() {
@@ -151,7 +180,7 @@
       statusText.textContent = 'AuraLyrics Cloud (GitHub Pages)';
       if (statusPill) statusPill.style.borderColor = 'rgba(138, 206, 0, 0.4)';
     } else {
-      statusText.textContent = 'Servidor Local: Conectado (3000)';
+      statusText.textContent = 'Servidor local · '+window.location.host;
     }
   }
 
@@ -159,8 +188,9 @@
     updateServerStatusBadge();
     let loadedTracks = [];
 
-    // 1. Intentar servidor local (si está corriendo en localhost:3000)
+    // GitHub Pages is static; only a local server provides this API.
     try {
+      if(isCloudMode())throw new Error('Static hosting');
       const res = await fetch('/api/lyrics/list');
       if (res.ok) {
         const data = await res.json();
@@ -183,17 +213,13 @@
       } catch (_) {}
     }
 
-    // 3. Mezclar con canciones guardadas en localStorage del navegador
-    try {
-      const localSaved = JSON.parse(localStorage.getItem('auralyrics_cloud_tracks') || '[]');
-      if (Array.isArray(localSaved) && localSaved.length > 0) {
-        localSaved.forEach(s => {
-          if (!loadedTracks.some(t => t.title === s.title && t.artist === s.artist)) {
-            loadedTracks.unshift(s);
-          }
-        });
-      }
-    } catch (_) {}
+    // Local drafts override the published version; old visual fields never erase a song.
+    for (const draft of readLocalDrafts()) {
+      if (!draft?.raw?.track) continue;
+      const index = loadedTracks.findIndex(track => sameTrack(track,draft));
+      if (index >= 0) loadedTracks[index] = draft;
+      else loadedTracks.unshift(draft);
+    }
 
     // 4. Si aún estuviera vacío, usar las demos iniciales
     if (loadedTracks.length === 0) {
@@ -280,10 +306,13 @@
      ========================================================================= */
 
   async function openTrackInEditor(trackMeta, initialStep = 1, switchView = true) {
-    let fullTrack = null;
+    const generation = ++openTrackGeneration;
+    const draft = readLocalDrafts().find(item => sameTrack(item,trackMeta));
+    let fullTrack = draft?.raw?.track || trackMeta.raw?.track || null;
 
-    // Fetch full track details from API or local file
+    // Preserve newer local drafts before consulting the published version.
     try {
+      if(fullTrack || isCloudMode())throw new Error('Use draft or static catalogue');
       const getUrl = `/api/lyrics/get?title=${encodeURIComponent(trackMeta.title)}&artist=${encodeURIComponent(trackMeta.artist || '')}&videoId=${encodeURIComponent(trackMeta.videoId || '')}`;
       const res = await fetch(getUrl);
       if (res.ok) {
@@ -328,25 +357,20 @@
           videoId: trackMeta.videoId || 'W22T_5YqH94',
           duration: trackMeta.duration || 133,
           lines: trackMeta.lines || [],
-          effects: trackMeta.effects || { theme: 'brat', bassBeats: [], palette: 'lime', blur: 6, scale: 1.5, shake: true }
+          effects: trackMeta.effects || { theme: 'brat', bassBeats: [], palette: 'lime', kineticSpeed: 1.15 }
         };
       }
     }
 
-    state.currentTrack = fullTrack;
-    if (!state.currentTrack.effects) {
-      state.currentTrack.effects = { theme: 'brat', bassBeats: [], palette: 'lime', blur: 6, scale: 1.5, shake: true, keyframes: [] };
-    }
-    if (!Array.isArray(state.currentTrack.effects.bassBeats)) {
-      state.currentTrack.effects.bassBeats = [];
-    }
-    if (!Array.isArray(state.currentTrack.effects.keyframes) || state.currentTrack.effects.keyframes.length === 0) {
-      state.currentTrack.effects.keyframes = [
-        { time: 0, palette: 'lime', color: '#8acf00', bgMode: 'solid', layout: 'impact', variant: 'heavy', blur: 6, scale: 1.5, shake: true },
-        { time: 24.0, palette: 'purple', color: '#9d4edd', bgMode: 'radial-glow', layout: 'spread', variant: 'lean', blur: 8, scale: 1.4, shake: true },
-        { time: 55.0, palette: 'cyan', color: '#00f5d4', bgMode: 'brat-matrix', layout: 'scribble', variant: 'wide', blur: 10, scale: 1.8, shake: true }
-      ];
-    }
+    if (generation !== openTrackGeneration) return;
+    pause(); stopSyncLoop(); clearPreviewBeat();
+    state.currentTrack = JSON.parse(JSON.stringify(fullTrack));
+    state.currentTrack.lines = Array.isArray(state.currentTrack.lines) ? state.currentTrack.lines : [];
+    state.duration = Number(state.currentTrack.duration)>0 ? Number(state.currentTrack.duration) : Math.max(10,...state.currentTrack.lines.map(line=>Number(line.time)+4));
+    state.currentTime = 0; state.selectedVerseIndex = 0; state.selectedKeyframeIndex = 0;
+    state.lastActiveVerseIdx = -1; state.lastActiveWordIdx = -1; state.activeBeatIndex = -1;
+    lastBratVerseIdx = -1; previewLayoutSignature = '';
+    normalizeTrackEffects(); updateTotalTimeDisplay(state.duration); updateDockProgress(0);
 
     // Auto-populate words if missing using AuraMusic syllable timing
     if (Array.isArray(state.currentTrack.lines)) {
@@ -390,7 +414,7 @@
         state.ytPlayer.cueVideoById(defVid);
       } catch (_) {}
     } else {
-      createYouTubePlayer(defVid);
+      if (window.YT?.Player) createYouTubePlayer(defVid);
     }
 
     // Populate UI steps
@@ -414,6 +438,7 @@
       if (libView) libView.style.display = 'none';
       if (editView) editView.style.display = 'flex';
     } else {
+      ++openTrackGeneration; pause(); stopSyncLoop(); clearPreviewBeat(); setPreviewExpanded(false);
       if (libView) libView.style.display = 'flex';
       if (editView) editView.style.display = 'none';
       loadLibraryTracks(); // refresh list
@@ -422,6 +447,7 @@
 
   function switchStep(stepNum) {
     state.activeStep = stepNum;
+    if (stepNum !== 3) setPreviewExpanded(false);
 
     // Stepper header pills
     document.querySelectorAll('.pipeline-steps .step-btn').forEach(btn => {
@@ -723,28 +749,12 @@
 
   function renderStep3Effects() {
     if (!state.currentTrack) return;
-    if (!state.currentTrack.effects) {
-      state.currentTrack.effects = {
-        theme: 'brat',
-        bassBeats: [],
-        palette: 'lime',
-        blur: 6,
-        scale: 1.5,
-        shake: true,
-        keyframes: []
-      };
-    }
-    if (!Array.isArray(state.currentTrack.effects.keyframes) || state.currentTrack.effects.keyframes.length === 0) {
-      state.currentTrack.effects.keyframes = [
-        { time: 0, palette: 'lime', color: '#8acf00', bgMode: 'solid', layout: 'impact', variant: 'heavy', blur: 6, scale: 1.5, shake: true },
-        { time: 24.0, palette: 'purple', color: '#9d4edd', bgMode: 'radial-glow', layout: 'spread', variant: 'lean', blur: 8, scale: 1.4, shake: true },
-        { time: 55.0, palette: 'cyan', color: '#00f5d4', bgMode: 'brat-matrix', layout: 'scribble', variant: 'wide', blur: 10, scale: 1.8, shake: true }
-      ];
-    }
+    normalizeTrackEffects();
 
     renderVideoEditorTimeline();
     renderKeyframeInspector();
     updateLiveCinemaStageFromKeyframes();
+    checkAndHighlightLiveVerse(state.currentTime);
   }
 
   function renderVideoEditorTimeline() {
@@ -801,11 +811,11 @@
 
       keyframes.forEach((kf, idx) => {
         const pct = (kf.time / dur) * 100;
+        const pal = kf.palette || 'lime';
         const diamond = document.createElement('div');
-        diamond.className = `ve-kf-diamond kf-color-${kf.palette || 'lime'}` + (idx === state.selectedKeyframeIndex ? ' selected' : '');
+        diamond.className = `ve-kf-diamond kf-color-${pal}` + (idx === state.selectedKeyframeIndex ? ' selected' : '');
         diamond.style.left = `${pct}%`;
-        diamond.style.backgroundColor = kf.color || '#8acf00';
-        diamond.title = `Keyframe #${idx + 1} (${formatTime(kf.time)}) — Color: ${kf.color || kf.palette}`;
+        diamond.title = `Keyframe #${idx + 1} (${formatTime(kf.time)}) — Paleta Brat: ${pal.toUpperCase()}`;
 
         diamond.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -867,7 +877,7 @@
     const shakeChk = document.getElementById('step3-chk-shake');
 
     if (titleEl) titleEl.textContent = `💎 Keyframe #${state.selectedKeyframeIndex + 1} (${formatTime(kf.time)}) — ${kf.palette?.toUpperCase() || 'LIME'}`;
-    if (inputTime) inputTime.value = formatTime(kf.time);
+    if (inputTime) { inputTime.value = formatTime(kf.time); inputTime.removeAttribute('aria-invalid'); inputTime.removeAttribute('title'); }
     if (shakeChk) shakeChk.checked = kf.shake !== false;
 
     // Palette swatches active
@@ -882,12 +892,17 @@
 
     // Variant buttons active
     document.querySelectorAll('.ve-var-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.variant === (kf.variant || 'heavy'));
+      btn.classList.toggle('active', btn.dataset.variant === (kf.variant || 'plain'));
+      btn.disabled = kf.layout === 'impact';
     });
+
+    document.getElementById('variant-hint').hidden = kf.layout !== 'impact';
+    for (const button of document.querySelectorAll('.ve-color-grid button,.ve-layout-btn,.ve-var-btn,.ve-entry-btn')) button.setAttribute('aria-pressed',String(button.classList.contains('active')));
 
     // Entry buttons active
     document.querySelectorAll('.ve-entry-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.entry === (kf.entry || 'rise'));
+      btn.setAttribute('aria-pressed',String(btn.classList.contains('active')));
     });
   }
 
@@ -907,9 +922,9 @@
         time: curT,
         palette: prevKf.palette || 'lime',
         layout: prevKf.layout || 'impact',
-        variant: prevKf.variant || 'heavy',
+        variant: prevKf.variant || 'plain',
         entry: prevKf.entry || 'rise',
-        shake: true
+        shake: prevKf.shake !== false
       };
       kfs.push(newKf);
       kfs.sort((a, b) => a.time - b.time);
@@ -961,62 +976,33 @@
   }
 
   function getActiveKeyframeAtTime(time) {
-    if (!state.currentTrack || !state.currentTrack.effects) return null;
-    const kfs = state.currentTrack.effects.keyframes || [];
-    if (!kfs.length) return null;
-
-    let active = kfs[0];
-    for (let i = 0; i < kfs.length; i++) {
-      if (time >= kfs[i].time) {
-        active = kfs[i];
-      } else {
-        break;
-      }
-    }
-    return active;
+    return BratEffects.active(state.currentTrack?.effects?.keyframes,time);
   }
 
   function updateLiveCinemaStageFromKeyframes() {
     const stage = document.getElementById('step3-cinema-stage');
-    const badge = document.getElementById('stage-active-kf-badge');
     if (!stage) return;
-
     const kf = getActiveKeyframeAtTime(state.currentTime);
-    if (!kf) return;
-
-    stage.setAttribute('data-lyrics-theme', 'brat');
-    stage.setAttribute('data-brat-palette', kf.palette || 'lime');
-    stage.setAttribute('data-bg-mode', kf.bgMode || 'solid');
-    stage.setAttribute('data-layout', kf.layout || 'impact');
-    stage.setAttribute('data-variant', kf.variant || 'heavy');
-
-    if (kf.color) {
-      stage.style.setProperty('--stage-accent-color', kf.color);
-      const hex = kf.color.replace('#', '');
-      if (hex.length === 6) {
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        stage.style.setProperty('--stage-accent-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
-
-        if (kf.bgMode === 'solid' && kf.palette === 'custom') {
-          stage.style.backgroundColor = kf.color;
-          const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-          stage.style.color = (yiq >= 128) ? '#000000' : '#ffffff';
-        } else {
-          stage.style.backgroundColor = '';
-          stage.style.color = '';
-        }
-      }
-    } else {
-      stage.style.backgroundColor = '';
-      stage.style.color = '';
-    }
-
+    const scene = kf || BratEffects.keyframes([])[0];
+    stage.dataset.lyricsTheme = 'brat';
+    stage.dataset.bratPalette = scene.palette;
+    stage.dataset.layout = scene.layout;
+    stage.dataset.variant = scene.variant;
+    stage.dataset.entry = scene.entry;
+    // Remove legacy inline backgrounds, custom gradients and colors on every transition.
+    stage.removeAttribute('data-bg-mode');
+    for (const property of ['background','background-color','color','--stage-accent-color','--stage-accent-glow']) stage.style.removeProperty(property);
+    if (scene.shake === false) clearPreviewBeat();
+    const badge = document.getElementById('stage-active-kf-badge');
     if (badge) {
-      badge.textContent = `KF: ${(kf.palette || 'custom').toUpperCase()} ${kf.color || ''}`;
-      badge.style.borderColor = kf.color || '#8acf00';
-      badge.style.color = kf.color || '#8acf00';
+      badge.textContent = (kf ? 'ESCENA '+(state.currentTrack.effects.keyframes.indexOf(kf)+1) : 'BASE')+' · '+scene.palette.toUpperCase();
+      badge.style.color = '#cbd5e1'; badge.style.borderColor = '#475569';
+    }
+    const signature = [scene.layout,scene.variant,stage.clientWidth,stage.clientHeight].join('|');
+    if (signature !== previewLayoutSignature) {
+      previewLayoutSignature = signature;
+      const text = document.getElementById('step3-stage-brat-text');
+      if (text?.textContent) fitBratText(text.textContent,text);
     }
   }
 
@@ -1040,21 +1026,21 @@
     }
   }
 
+  function clearPreviewBeat() {
+    if (previewBeatTimer !== null) clearTimeout(previewBeatTimer);
+    previewBeatTimer = null;
+    const stage = document.getElementById('step3-cinema-stage');
+    for (const name of ['beat','beat-intensity','flash']) stage?.removeAttribute('data-'+name);
+  }
+
   function triggerStageBeatHit(is808 = true) {
     const stage = document.getElementById('step3-cinema-stage');
-    if (!stage) return;
-
-    stage.setAttribute('data-beat', 'hit');
-    if (is808) {
-      stage.setAttribute('data-beat-intensity', '808');
-      stage.setAttribute('data-flash', 'contrast');
-    }
-
-    setTimeout(() => {
-      stage.removeAttribute('data-beat');
-      stage.removeAttribute('data-beat-intensity');
-      stage.removeAttribute('data-flash');
-    }, 180);
+    if (!stage || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        getActiveKeyframeAtTime(state.currentTime)?.shake === false) return;
+    clearPreviewBeat();
+    stage.dataset.beat = 'hit';
+    if (is808) { stage.dataset.beatIntensity = '808'; stage.dataset.flash = 'contrast'; }
+    previewBeatTimer = setTimeout(clearPreviewBeat,180);
   }
 
   function renderBeatMarkersTrack() {
@@ -1080,6 +1066,7 @@
 
   function startSyncLoop() {
     if (state.syncLoopId) cancelAnimationFrame(state.syncLoopId);
+    if (document.hidden || state.currentView!=='editor') return;
 
     const sync = () => {
       if (state.isYtReady && state.ytPlayer && typeof state.ytPlayer.getCurrentTime === 'function') {
@@ -1107,7 +1094,7 @@
         } catch (_) {}
       }
 
-      if (state.isPlaying) {
+      if (state.isPlaying && !document.hidden && state.currentView==='editor') {
         state.syncLoopId = requestAnimationFrame(sync);
       }
     };
@@ -1152,7 +1139,7 @@
       highlightActiveVerseInStep1();
       renderCinemaStageActiveLine(activeIdx, curT);
     } else if (activeIdx >= 0) {
-      updateCinemaStageWordHighlight(activeIdx, curT);
+      renderCinemaStageActiveLine(activeIdx, curT);
     }
   }
 
@@ -1173,26 +1160,24 @@
   function fitBratText(fullText, element) {
     if (!element || !fullText) return;
     const stage = element.closest('.cinema-brat-stage');
-    const impact = stage?.dataset.layout === 'impact';
-    const maxSize = impact ? Math.max(65, Math.min(220, Math.round((stage?.clientWidth || 800) * 0.16)))
-                           : Math.max(50, Math.min(160, Math.round((stage?.clientWidth || 800) * 0.11)));
-    const minSize = 34;
-    const availableWidth = Math.max(220, (stage?.clientWidth || 800) * 0.92);
-    const availableHeight = Math.max(160, (stage?.clientHeight || 420) * 0.82);
-
+    if (!stage || stage.clientWidth<1 || stage.clientHeight<1) return;
+    const center = element.parentElement;
+    const availableWidth = Math.max(1,element.clientWidth);
+    const availableHeight = center.clientHeight*.94;
     const measure = element.cloneNode(true);
-    measure.removeAttribute('id');
-    measure.setAttribute('aria-hidden', 'true');
-    measure.style.cssText = `position:absolute;visibility:hidden;pointer-events:none;width:${availableWidth}px;max-height:none;min-height:0;height:auto;overflow:visible;animation:none;transition:none;font-size:${maxSize}px`;
-    document.body.appendChild(measure);
-
-    let size = maxSize;
-    while (size > minSize && (measure.scrollWidth > availableWidth + 4 || measure.scrollHeight > availableHeight + 4)) {
-      size = Math.max(minSize, size - (size > 110 ? 6 : 3));
-      measure.style.fontSize = `${size}px`;
+    measure.removeAttribute('id'); measure.setAttribute('aria-hidden','true');
+    Object.assign(measure.style,{position:'absolute',visibility:'hidden',pointerEvents:'none',
+      width:availableWidth+'px',maxHeight:'none',minHeight:'0',height:'auto',overflow:'visible',
+      animation:'none',transition:'none'});
+    // Measure inside the same scene so layout, font variant and wrapping really match.
+    center.appendChild(measure);
+    let low=14,high=Math.min(260,stage.clientWidth*(stage.dataset.layout==='impact'?.2:.16));
+    for (let pass=0;pass<12;pass++) {
+      const size=(low+high)/2; measure.style.fontSize=size+'px';
+      if(measure.scrollWidth>availableWidth+1 || measure.scrollHeight>availableHeight+1)high=size;
+      else low=size;
     }
-    measure.remove();
-    element.style.fontSize = `${size}px`;
+    measure.remove(); element.style.fontSize=Math.floor(low)+'px';
   }
 
   function renderBratWords(stageText, count, previousCount, allowAnimation = true) {
@@ -1204,7 +1189,7 @@
       span.classList.toggle('is-hidden', !revealed);
       if (revealed && wasHidden && allowAnimation && (count - previousCount <= 2)) {
         span.classList.add('brat-word--new');
-      } else if (!revealed) {
+      } else if (!revealed || !allowAnimation) {
         span.classList.remove('brat-word--new');
       }
       span.classList.toggle('brat-word--active', i === count - 1 || (count > 0 && i < count && i >= count - 2));
@@ -1221,13 +1206,17 @@
     if (activeIdx < 0 || activeIdx >= state.currentTrack.lines.length) {
       stageText.innerHTML = `<span class="brat-word brat-word--active"><span class="brat-word-ink">AURALYRICS</span></span>`;
       lastBratVerseIdx = -1;
+      stageText.dataset.bratCount='0'; delete stageText.dataset.wordsSignature;
+      fitBratText(stageText.textContent,stageText);
       return;
     }
 
     const line = state.currentTrack.lines[activeIdx];
     const words = line.words || distributeWordsForLine(line.text, line.time, line.time + 3.5);
 
-    if (activeIdx !== lastBratVerseIdx) {
+    const signature=JSON.stringify(words);
+    if (activeIdx !== lastBratVerseIdx || stageText.dataset.wordsSignature!==signature) {
+      stageText.dataset.wordsSignature=signature;
       lastBratVerseIdx = activeIdx;
       stageText.replaceChildren();
 
@@ -1236,7 +1225,7 @@
         span.className = 'brat-word is-hidden';
         const ink = document.createElement('span');
         ink.className = 'brat-word-ink';
-        ink.textContent = w.word;
+        ink.textContent = w.word || w.text || '';
         span.appendChild(ink);
         span.appendChild(document.createTextNode(' '));
         span.addEventListener('animationend', (e) => {
@@ -1261,7 +1250,7 @@
 
     let count = 0;
     for (let i = 0; i < words.length; i++) {
-      if (curT >= words[i].start) {
+      if (curT >= (words[i].start ?? words[i].time)) {
         count = i + 1;
       } else {
         break;
@@ -1271,20 +1260,16 @@
     const prevCount = parseInt(stageText.dataset.bratCount || '0', 10);
     if (count !== prevCount) {
       stageText.dataset.bratCount = String(count);
-      renderBratWords(stageText, count, prevCount, state.isPlaying);
+      renderBratWords(stageText, count, prevCount, state.isPlaying && count>prevCount);
     }
   }
 
   function checkAndTriggerBeats(curT) {
-    if (!state.currentTrack || !state.currentTrack.effects.shake) return;
+    if (!state.currentTrack || getActiveKeyframeAtTime(curT)?.shake === false) return;
     const beats = state.currentTrack.effects.bassBeats || [];
-
-    for (let i = 0; i < beats.length; i++) {
-      const bTime = beats[i];
-      if (Math.abs(curT - bTime) < 0.08 && i !== state.activeBeatIndex) {
-        state.activeBeatIndex = i;
-        triggerStageBeatHit();
-        break;
+    for (let i=0;i<beats.length;i++) {
+      if (Math.abs(curT-beats[i])<.08 && i!==state.activeBeatIndex) {
+        state.activeBeatIndex=i; triggerStageBeatHit(); break;
       }
     }
   }
@@ -1601,15 +1586,11 @@
   async function saveCurrentTrackToDatabase() {
     if (!state.currentTrack) return;
 
-    const payload = {
-      found: true,
-      track: state.currentTrack
-    };
+    const payload = getCleanTrackPayload();
 
-    let savedLocally = false;
-
-    // 1. Intentar guardar en servidor Node.js si está disponible
+    // GitHub Pages keeps drafts in this browser; it cannot write to the repository.
     try {
+      if(isCloudMode())throw new Error('Static hosting');
       const res = await fetch('/api/lyrics/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1618,8 +1599,8 @@
 
       if (res.ok) {
         const data = await res.json();
+        if(!data.success)throw new Error('Save was not confirmed');
         alert(`✨ Canción guardada con éxito en el servidor local: ${data.fileName}`);
-        savedLocally = true;
         loadLibraryTracks();
         return;
       }
@@ -1641,7 +1622,7 @@
         raw: payload
       };
 
-      const localSaved = JSON.parse(localStorage.getItem('auralyrics_cloud_tracks') || '[]');
+      const localSaved = readLocalDrafts();
       const existingIdx = localSaved.findIndex(s => s.title === trackMeta.title && s.artist === trackMeta.artist);
       if (existingIdx >= 0) {
         localSaved[existingIdx] = trackMeta;
@@ -1660,12 +1641,7 @@
   function getCleanTrackPayload() {
     if (!state.currentTrack) return null;
     const cleanTrack = JSON.parse(JSON.stringify(state.currentTrack));
-    cleanTrack.effects = {
-      theme: cleanTrack.effects?.theme || 'brat',
-      palette: cleanTrack.effects?.palette || 'lime',
-      bassBeats: Array.isArray(cleanTrack.effects?.bassBeats) ? cleanTrack.effects.bassBeats : [],
-      kineticSpeed: cleanTrack.effects?.kineticSpeed || 1.15
-    };
+    cleanTrack.effects = BratEffects.normalize(cleanTrack.effects,cleanTrack.duration);
     return {
       found: true,
       track: cleanTrack
@@ -1742,9 +1718,42 @@
   }
 
   function seekTo(seconds) {
-    if (state.ytPlayer && typeof state.ytPlayer.seekTo === 'function') {
-      state.ytPlayer.seekTo(seconds, true);
+    if (!Number.isFinite(Number(seconds))) return;
+    const target = Math.min(Math.max(0,Number(seconds)),state.duration || Infinity);
+    clearPreviewBeat(); state.activeBeatIndex = -1;
+    state.currentTime = target;
+    try { state.ytPlayer?.seekTo?.(target,true); } catch (_) {}
+    updateDockProgress(target); updateLiveCinemaStageFromKeyframes(); checkAndHighlightLiveVerse(target);
+    const playhead = document.getElementById('ve-playhead-needle');
+    if (playhead) playhead.style.left = (state.duration>0 ? 100*target/state.duration : 0)+'%';
+    const display = document.getElementById('ve-tc-display'); if (display) display.textContent = formatTime(target);
+  }
+
+  function editSelectedKeyframeTime(seconds) {
+    const kfs = state.currentTrack?.effects?.keyframes;
+    const selected = kfs?.[state.selectedKeyframeIndex];
+    if (!selected || !Number.isFinite(seconds) || seconds<0 || seconds>state.duration) {
+      const input = document.getElementById('input-kf-time');
+      if (input) { input.setAttribute('aria-invalid','true'); input.title='Usa un tiempo entre 00:00 y '+formatTime(state.duration); }
+      return;
     }
+    selected.time = Math.round(seconds*100)/100;
+    kfs.sort((a,b)=>a.time-b.time); state.selectedKeyframeIndex = kfs.indexOf(selected);
+    const input = document.getElementById('input-kf-time'); input?.removeAttribute('aria-invalid');
+    renderStep3Effects(); seekTo(selected.time);
+  }
+
+  let previewPreviousFocus = null;
+  function setPreviewExpanded(expanded) {
+    const card = document.querySelector('.step3-preview-card');
+    const button = document.getElementById('btn-expand-preview');
+    if (!card || !button || card.classList.contains('is-expanded')===expanded) return;
+    if (expanded) previewPreviousFocus=document.activeElement;
+    card.classList.toggle('is-expanded',expanded); document.body.classList.toggle('preview-expanded',expanded);
+    button.setAttribute('aria-pressed',String(expanded)); button.textContent=expanded?'Volver al editor · Esc':'Ampliar vista previa ↗';
+    if (expanded) button.focus({preventScroll:true});
+    else previewPreviousFocus?.focus?.({preventScroll:true});
+    requestAnimationFrame(()=>{ previewLayoutSignature=''; updateLiveCinemaStageFromKeyframes(); });
   }
 
   function updatePlayPauseIcons(isPlaying) {
@@ -1762,7 +1771,7 @@
   }
 
   function formatTime(secs) {
-    if (isNaN(secs) || secs < 0) return '00:00.00';
+    if (!Number.isFinite(Number(secs)) || secs < 0) return '00:00.00';
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
     const ms = Math.floor((secs % 1) * 100);
@@ -1930,8 +1939,8 @@
     document.getElementById('btn-back-to-step-2')?.addEventListener('click', () => switchStep(2));
 
     // Export Modal open/close
-    const modalExport = document.getElementById('modal-export-data');
-    document.getElementById('btn-header-export')?.addEventListener('click', openExportModal);
+    const modalExport = document.getElementById('modal-export');
+    document.getElementById('btn-export-track-modal')?.addEventListener('click', openExportModal);
     document.getElementById('btn-step3-export')?.addEventListener('click', openExportModal);
     document.getElementById('btn-close-modal-export')?.addEventListener('click', () => {
       if (modalExport) modalExport.style.display = 'none';
@@ -1946,8 +1955,9 @@
     document.getElementById('btn-export-download-lrc')?.addEventListener('click', downloadLrcFile);
     document.getElementById('btn-export-copy-clipboard')?.addEventListener('click', () => {
       if (state.currentTrack) {
-        navigator.clipboard.writeText(JSON.stringify({ found: true, track: state.currentTrack }, null, 2));
-        alert('Copiado al portapapeles');
+        navigator.clipboard.writeText(JSON.stringify(getCleanTrackPayload(), null, 2))
+          .then(()=>alert('Copiado al portapapeles'))
+          .catch(()=>alert('No se pudo copiar. Puedes descargar el JSON.'));
       }
     });
 
@@ -2052,19 +2062,7 @@
         duration: 180,
         lines: fetchedLines,
         humanReviewed: false,
-        effects: {
-          theme: 'brat',
-          bassBeats: [],
-          palette: 'lime',
-          blur: 6,
-          scale: 1.5,
-          shake: true,
-          keyframes: [
-            { time: 0, palette: 'lime', color: '#8acf00', bgMode: 'solid', layout: 'impact', variant: 'heavy', blur: 6, scale: 1.5, shake: true },
-            { time: 24.0, palette: 'purple', color: '#9d4edd', bgMode: 'radial-glow', layout: 'spread', variant: 'lean', blur: 8, scale: 1.4, shake: true },
-            { time: 55.0, palette: 'cyan', color: '#00f5d4', bgMode: 'brat-matrix', layout: 'scribble', variant: 'wide', blur: 10, scale: 1.8, shake: true }
-          ]
-        }
+        effects: BratEffects.normalize({})
       };
 
       if (modalAdd) modalAdd.style.display = 'none';
@@ -2105,9 +2103,27 @@
     document.getElementById('btn-tap-verse-stamp')?.addEventListener('click', stampCurrentLiveVerse);
     document.getElementById('btn-tap-beat-stamp')?.addEventListener('click', addBassBeatStamp);
 
+    document.getElementById('btn-expand-preview')?.addEventListener('click',()=>setPreviewExpanded(!document.body.classList.contains('preview-expanded')));
+    const resizePreview = new ResizeObserver(()=>{
+      if (state.currentView==='editor' && state.activeStep===3) { previewLayoutSignature=''; updateLiveCinemaStageFromKeyframes(); }
+    });
+    resizePreview.observe(document.getElementById('step3-cinema-stage'));
+    document.addEventListener('visibilitychange',()=>{
+      clearPreviewBeat(); stopSyncLoop();
+      if (!document.hidden && state.isPlaying) startSyncLoop();
+    });
+    window.addEventListener('pagehide',()=>{ clearPreviewBeat(); stopSyncLoop(); });
+
     // Global Keyboard Shortcuts (Space for Verse Stamp, B for Beat, K for Keyframe, Left/Right for Seek)
     window.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key==='Escape') {
+        setPreviewExpanded(false);
+        document.getElementById('modal-export').style.display='none';
+        return;
+      }
+      if (state.currentView!=='editor' || !state.currentTrack || e.repeat || e.ctrlKey || e.altKey || e.metaKey ||
+          document.querySelector('.modal-backdrop:not([style*="display: none"])') ||
+          e.target.closest('input,textarea,select,button,a,[contenteditable="true"]')) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -2212,38 +2228,20 @@
     document.getElementById('btn-delete-selected-kf')?.addEventListener('click', deleteSelectedKeyframe);
     document.getElementById('btn-auto-section-keyframes')?.addEventListener('click', autoGenerateSectionKeyframes);
 
-    document.getElementById('btn-kf-nudge-back')?.addEventListener('click', () => {
-      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
-      if (kf) {
-        kf.time = Math.max(0, Math.round((kf.time - 0.2) * 100) / 100);
-        state.currentTrack.effects.keyframes.sort((a, b) => a.time - b.time);
-        renderStep3Effects();
-      }
+    document.getElementById('btn-kf-nudge-back')?.addEventListener('click',()=> {
+      const kf=state.currentTrack?.effects?.keyframes[state.selectedKeyframeIndex];
+      if(kf)editSelectedKeyframeTime(Math.max(0,kf.time-.2));
     });
-
-    document.getElementById('btn-kf-nudge-fwd')?.addEventListener('click', () => {
-      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
-      if (kf) {
-        kf.time = Math.round((kf.time + 0.2) * 100) / 100;
-        state.currentTrack.effects.keyframes.sort((a, b) => a.time - b.time);
-        renderStep3Effects();
-      }
+    document.getElementById('btn-kf-nudge-fwd')?.addEventListener('click',()=> {
+      const kf=state.currentTrack?.effects?.keyframes[state.selectedKeyframeIndex];
+      if(kf)editSelectedKeyframeTime(Math.min(state.duration,kf.time+.2));
     });
-
-    document.getElementById('input-kf-time')?.addEventListener('change', (e) => {
-      const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
-      if (kf) {
-        const parts = e.target.value.split(':');
-        let sec = parseFloat(e.target.value);
-        if (parts.length === 2) {
-          sec = parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
-        }
-        if (!isNaN(sec) && sec >= 0) {
-          kf.time = Math.round(sec * 100) / 100;
-          state.currentTrack.effects.keyframes.sort((a, b) => a.time - b.time);
-          renderStep3Effects();
-        }
-      }
+    document.getElementById('input-kf-time')?.addEventListener('change',event=> {
+      const value=event.target.value.trim();
+      const valid=/^(?:\d+:)?\d+(?:\.\d+)?$/.test(value);
+      const parts=value.split(':').map(Number);
+      const seconds=valid && (parts.length===1 || parts[1]<60) ? parts.length===2?parts[0]*60+parts[1]:parts[0] : NaN;
+      editSelectedKeyframeTime(seconds);
     });
 
     // Video Editor Official Brat Color Swatches
@@ -2293,7 +2291,7 @@
     document.getElementById('step3-chk-shake')?.addEventListener('change', (e) => {
       const kf = state.currentTrack?.effects?.keyframes?.[state.selectedKeyframeIndex];
       if (kf) kf.shake = e.target.checked;
-      if (state.currentTrack?.effects) state.currentTrack.effects.shake = e.target.checked;
+      if (!e.target.checked) clearPreviewBeat();
     });
 
     document.getElementById('btn-step3-clear-beats')?.addEventListener('click', () => {

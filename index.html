@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="studio.css">
+  <link rel="stylesheet" href="editor-layout.css">
 </head>
 <body class="studio-body">
 
@@ -351,8 +352,8 @@
         <div class="step-view" id="step-view-3" style="display: none;">
           <div class="step-view-header">
             <div>
-              <h2>PASO 3: EDITOR DE VIDEO & <span class="accent-lime">KEYFRAMES DE COLOR</span></h2>
-              <p>Control de línea de tiempo estilo After Effects / Premiere: keyframes de paleta, animaciones y ritmos 808.</p>
+              <h2>PASO 3: TU <span class="accent-lime">ESCENA BRAT</span></h2>
+              <p>Elige una escena en la línea de tiempo y ajusta sus colores, letras y golpes. Solo se aplican las opciones de este panel.</p>
             </div>
             <div class="step-view-tools">
               <button id="btn-add-keyframe-now" class="btn-glow-lime">
@@ -429,7 +430,7 @@
                     <label>Tiempo del Keyframe:</label>
                     <div class="nudge-controls">
                       <button class="btn-nudge" id="btn-kf-nudge-back">-0.2s</button>
-                      <input type="text" id="input-kf-time" class="input-kf-time" value="00:00.00" />
+                      <input type="text" id="input-kf-time" aria-label="Tiempo de la escena en minutos y segundos" class="input-kf-time" value="00:00.00" />
                       <button class="btn-nudge" id="btn-kf-nudge-fwd">+0.2s</button>
                     </div>
                   </div>
@@ -452,21 +453,22 @@
                 <div class="effects-field">
                   <label>Disposición de Texto (Layout):</label>
                   <div class="ve-layout-buttons">
-                    <button class="ve-layout-btn active" data-layout="impact">Impact (Gigante)</button>
-                    <button class="ve-layout-btn" data-layout="center">Center</button>
-                    <button class="ve-layout-btn" data-layout="spread">Spread (Expandido)</button>
-                    <button class="ve-layout-btn" data-layout="scribble">Scribble (Caótico)</button>
+                    <button class="ve-layout-btn active" data-layout="impact">Gigante</button>
+                    <button class="ve-layout-btn" data-layout="center">Centrado</button>
+                    <button class="ve-layout-btn" data-layout="spread">Expandido</button>
+                    <button class="ve-layout-btn" data-layout="scribble">Trazo</button>
                   </div>
                 </div>
 
                 <!-- Font Variant -->
                 <div class="effects-field">
                   <label>Variante Tipográfica:</label>
+                  <small id="variant-hint" class="inspector-hint" hidden>Gigante usa su propia tipografía. Elige otra disposición para cambiar la variante.</small>
                   <div class="ve-variant-buttons">
-                    <button class="ve-var-btn active" data-variant="heavy">Heavy (Black 700)</button>
-                    <button class="ve-var-btn" data-variant="lean">Lean (Italic)</button>
-                    <button class="ve-var-btn" data-variant="wide">Wide (Espaciado)</button>
-                    <button class="ve-var-btn" data-variant="plain">Plain</button>
+                    <button class="ve-var-btn active" data-variant="heavy">Negrita</button>
+                    <button class="ve-var-btn" data-variant="lean">Cursiva</button>
+                    <button class="ve-var-btn" data-variant="wide">Espaciado</button>
+                    <button class="ve-var-btn" data-variant="plain">Normal</button>
                   </div>
                 </div>
 
@@ -474,9 +476,9 @@
                 <div class="effects-field">
                   <label>Animación de Entrada de Palabras:</label>
                   <div class="ve-variant-buttons" id="ve-entry-buttons">
-                    <button class="ve-entry-btn active" data-entry="rise">Rise (Subida)</button>
-                    <button class="ve-entry-btn" data-entry="stamp">Stamp (Impacto)</button>
-                    <button class="ve-entry-btn" data-entry="slide">Slide (Deslizamiento)</button>
+                    <button class="ve-entry-btn active" data-entry="rise">Subida</button>
+                    <button class="ve-entry-btn" data-entry="stamp">Impacto</button>
+                    <button class="ve-entry-btn" data-entry="slide">Deslizamiento</button>
                   </div>
                 </div>
 
@@ -496,13 +498,13 @@
                 <div class="theater-card-header">
                   <div class="theater-meta-left">
                     <span>ESCENARIO CINEMA EN TIEMPO REAL</span>
-                    <span id="stage-active-kf-badge" class="badge-kf-indicator">KF: Lime #8acf00</span>
+                    <span id="stage-active-kf-badge" class="badge-kf-indicator">KF: LIME • IMPACT</span>
                   </div>
-                  <span class="badge-fps">AuraMusic Engine 60FPS</span>
+                  <button type="button" id="btn-expand-preview" class="btn-secondary-micro" aria-pressed="false" aria-controls="step3-cinema-stage">Ampliar vista previa ↗</button>
                 </div>
 
                 <!-- Authentic AuraMusic Brat Cinema Stage -->
-                <div class="cinema-live-stage cinema-brat-stage" id="step3-cinema-stage" data-lyrics-theme="brat" data-brat-palette="lime" data-layout="impact" data-variant="heavy">
+                <div role="region" aria-label="Vista previa de Brat" class="cinema-live-stage cinema-brat-stage" id="step3-cinema-stage" data-lyrics-theme="brat" data-brat-palette="lime" data-layout="impact" data-variant="plain" data-entry="rise">
                   <div class="cinema-brat-noise" id="cinema-brat-noise"></div>
                   <div class="cinema-brat-center" id="step3-stage-center-box">
                     <div class="cinema-brat-text" id="step3-stage-brat-text" data-brat-count="0">
@@ -511,6 +513,9 @@
                       <span class="brat-word brat-word--active"><span class="brat-word-ink">A</span></span>
                       <span class="brat-word brat-word--active"><span class="brat-word-ink">SEGUIR</span></span>
                     </div>
+                    <svg class="cinema-brat-scribble" viewBox="0 0 800 300" preserveAspectRatio="none" aria-hidden="true">
+                      <path d="M55 58 C205 20 445 54 720 37 M88 95 L745 161 L95 188 L690 93 L126 236 L722 248 M77 136 Q315 274 759 118" />
+                    </svg>
                   </div>
                 </div>
               </div>
@@ -519,7 +524,7 @@
 
           <div class="step-view-footer">
             <button class="btn-secondary" id="btn-back-to-step-2">← Volver a Frases</button>
-            <button class="btn-glow-lime" id="btn-step3-export">¡Todo Listo! Guardar & Exportar a GitHub →</button>
+            <button class="btn-glow-lime" id="btn-step3-export">¡Todo Listo! Guardar / Exportar JSON →</button>
           </div>
         </div>
       </section>
@@ -650,6 +655,7 @@
   <!-- YouTube IFrame API -->
   <script src="https://www.youtube.com/iframe_api"></script>
   <!-- Main Studio App Engine -->
+  <script src="brat-effects.js"></script>
   <script src="studio.js"></script>
 </body>
 </html>

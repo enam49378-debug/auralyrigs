@@ -708,7 +708,7 @@ body.studio-body {
 /* Editor Workspace 2-Column Split */
 .editor-workspace-layout {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 250px minmax(0,1fr);
   flex: 1;
   min-height: calc(100vh - 124px);
 }
@@ -1231,7 +1231,7 @@ body.studio-body {
 /* Step 3: Efectos & Brat Ritmo */
 .step3-effects-grid {
   display: grid;
-  grid-template-columns: 420px 1fr;
+  grid-template-columns: 280px minmax(0,1fr);
   gap: 20px;
   flex: 1;
 }
@@ -1423,7 +1423,7 @@ body.studio-body {
 .cinema-brat-stage {
   position: relative;
   width: 100%;
-  min-height: 420px;
+  min-height: clamp(500px, 65vh, 850px);
   overflow: hidden;
   border-radius: var(--radius-md);
   contain: layout paint style;
@@ -1474,19 +1474,7 @@ body.studio-body {
   color: var(--brat-fg);
 }
 
-/* Background modes adaptables */
-.cinema-brat-stage[data-bg-mode="radial-glow"] {
-  background: radial-gradient(circle at 50% 50%, var(--stage-accent-glow, rgba(138, 206, 0, 0.45)) 0%, rgba(12, 16, 24, 0.96) 68%, #07090e 100%) !important;
-  color: #fff !important;
-  --brat-fg: #ffffff;
-}
 
-.cinema-brat-stage[data-bg-mode="brat-matrix"] {
-  background-color: var(--stage-accent-color, #8acf00) !important;
-  background-image: 
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.12) 1px, transparent 1px, transparent 4px),
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.06) 1px, transparent 1px, transparent 12px) !important;
-}
 
 /* 1. CAMBIOS DE FONDO VISIBLES EN CADA GOLPE / TAN TAN */
 .cinema-brat-stage[data-beat="hit"] {
@@ -1630,17 +1618,17 @@ body.studio-body {
   will-change: opacity, filter, transform;
   text-rendering: geometricPrecision;
   -webkit-font-smoothing: antialiased;
-  transition: transform .18s cubic-bezier(.16, 1, .3, 1), text-shadow .18s ease !important;
+  transition: text-shadow .18s ease;
 }
 
 /* Rebote Cinético en el Texto en Cada Golpe */
 .cinema-brat-stage[data-beat="hit"] .cinema-brat-text {
-  transform: scaleX(.80) scale(1.035) !important;
+
   text-shadow: 0 4px 22px rgba(0, 0, 0, .45) !important;
   transition: none !important;
 }
 .cinema-brat-stage[data-beat-intensity="808"] .cinema-brat-text {
-  transform: scaleX(.80) scale(1.075) !important;
+
   text-shadow: 0 6px 36px rgba(0, 0, 0, .75), 0 0 16px rgba(255, 255, 255, .4) !important;
   transition: none !important;
 }
@@ -1680,10 +1668,43 @@ body.studio-body {
   transform: none;
 }
 .cinema-brat-stage[data-layout="impact"][data-beat="hit"] .cinema-brat-text {
-  transform: scale(1.035) !important;
+
 }
 .cinema-brat-stage[data-layout="impact"][data-beat-intensity="808"] .cinema-brat-text {
-  transform: scale(1.075) !important;
+
+}
+
+/* Layout Scribble de AuraMusic Brat */
+.cinema-brat-stage .cinema-brat-scribble {
+  position: absolute;
+  z-index: 2;
+  width: min(85vw, 1200px);
+  height: 38vh;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.cinema-brat-stage[data-layout="scribble"] .cinema-brat-scribble {
+  opacity: .55;
+}
+
+.cinema-brat-stage .cinema-brat-scribble path {
+  fill: none;
+  stroke: var(--brat-fg);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 2600;
+  stroke-dashoffset: 2600;
+}
+
+.cinema-brat-stage[data-layout="scribble"] .cinema-brat-scribble path {
+  animation: bratScribbleDraw .9s ease-out forwards;
+}
+
+@keyframes bratScribbleDraw {
+  to { stroke-dashoffset: 0; }
 }
 
 /* Palabras y Estados de Entrada */
@@ -2044,7 +2065,7 @@ body.studio-body {
   width: 14px;
   height: 14px;
   border: 2px solid rgba(138, 207, 0, 0.3);
-  border-top-color: var(--accent-lime);
+  border-top-color: var(--brat-lime-electric);
   border-radius: 50%;
   animation: spinMeta 0.6s linear infinite;
 }
@@ -2121,7 +2142,7 @@ body.studio-body {
 }
 
 .verse-pace-control label strong {
-  color: var(--accent-lime);
+  color: var(--brat-lime-electric);
   font-family: var(--font-mono);
 }
 
@@ -2162,7 +2183,7 @@ body.studio-body {
 }
 
 .phrase-block-card.active-playback {
-  border-color: var(--accent-lime);
+  border-color: var(--brat-lime-electric);
   background: rgba(138, 207, 0, 0.06);
   box-shadow: 0 0 16px rgba(138, 207, 0, 0.15);
 }
@@ -2186,7 +2207,7 @@ body.studio-body {
 
 .phrase-index-tag {
   background: rgba(138, 207, 0, 0.15);
-  color: var(--accent-lime);
+  color: var(--brat-lime-electric);
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 700;
@@ -2211,7 +2232,7 @@ body.studio-body {
 
 .btn-split-phrase:hover, .btn-merge-phrase:hover {
   background: rgba(255, 255, 255, 0.15);
-  border-color: var(--accent-lime);
+  border-color: var(--brat-lime-electric);
 }
 
 .phrase-words-row {
@@ -2233,13 +2254,13 @@ body.studio-body {
 }
 
 .word-chip-box:hover {
-  border-color: var(--accent-lime);
+  border-color: var(--brat-lime-electric);
   transform: translateY(-1px);
 }
 
 .word-chip-box.current-word {
   background: rgba(138, 207, 0, 0.18);
-  border-color: var(--accent-lime);
+  border-color: var(--brat-lime-electric);
   box-shadow: 0 0 10px rgba(138, 207, 0, 0.35);
 }
 
@@ -2255,7 +2276,7 @@ body.studio-body {
 .word-time-badge {
   font-family: var(--font-mono);
   font-size: 0.68rem;
-  color: var(--accent-lime);
+  color: var(--brat-lime-electric);
 }
 
 .word-nudge-row {
@@ -2330,7 +2351,7 @@ body.studio-body {
   font-family: var(--font-mono);
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--accent-lime);
+  color: var(--brat-lime-electric);
 }
 
 .ve-timeline-actions {
@@ -2510,12 +2531,11 @@ body.studio-body {
 }
 
 .ve-kf-diamond.kf-color-lime { background: #8acf00; border-color: #bbf7d0; }
-.ve-kf-diamond.kf-color-purple { background: #9d4edd; border-color: #e9d5ff; }
-.ve-kf-diamond.kf-color-cyan { background: #00f5d4; border-color: #a7f3d0; }
-.ve-kf-diamond.kf-color-red { background: #ff0055; border-color: #fecdd3; }
-.ve-kf-diamond.kf-color-yellow { background: #ffbe0b; border-color: #fef08a; }
-.ve-kf-diamond.kf-color-ink { background: #18181b; border-color: #71717a; }
-.ve-kf-diamond.kf-color-white { background: #f8fafc; border-color: #94a3b8; }
+.ve-kf-diamond.kf-color-white { background: #fafaf7; border-color: #111111; }
+.ve-kf-diamond.kf-color-red { background: #ed1208; border-color: #fca5a5; }
+.ve-kf-diamond.kf-color-blue { background: #1500a8; border-color: #93c5fd; }
+.ve-kf-diamond.kf-color-yellow { background: #f4ef3b; border-color: #fef08a; }
+.ve-kf-diamond.kf-color-ink { background: #181818; border-color: #52525b; }
 
 .ve-kf-diamond.kf-layout-diamond {
   background: #9d4edd;
@@ -2592,7 +2612,7 @@ body.studio-body {
 
 .btn-nudge:hover {
   background: rgba(138, 207, 0, 0.2);
-  border-color: var(--accent-lime);
+  border-color: var(--brat-lime-electric);
 }
 
 .input-kf-time {
@@ -2601,7 +2621,7 @@ body.studio-body {
   background: #000;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 4px;
-  color: var(--accent-lime);
+  color: var(--brat-lime-electric);
   font-family: var(--font-mono);
   font-size: 0.82rem;
   padding: 4px;
@@ -2641,7 +2661,7 @@ body.studio-body {
   gap: 6px;
 }
 
-.ve-layout-btn, .ve-var-btn {
+.ve-layout-btn, .ve-var-btn, .ve-entry-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
@@ -2652,15 +2672,15 @@ body.studio-body {
   transition: all 0.15s ease;
 }
 
-.ve-layout-btn:hover, .ve-var-btn:hover {
+.ve-layout-btn:hover, .ve-var-btn:hover, .ve-entry-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
 
-.ve-layout-btn.active, .ve-var-btn.active {
+.ve-layout-btn.active, .ve-var-btn.active, .ve-entry-btn.active {
   background: rgba(138, 207, 0, 0.18);
-  border-color: var(--accent-lime);
-  color: var(--accent-lime);
+  border-color: var(--brat-lime-electric);
+  color: var(--brat-lime-electric);
   font-weight: 700;
 }
 
@@ -2672,8 +2692,8 @@ body.studio-body {
 
 .badge-kf-indicator {
   background: rgba(138, 207, 0, 0.18);
-  border: 1px solid var(--accent-lime);
-  color: var(--accent-lime);
+  border: 1px solid var(--brat-lime-electric);
+  color: var(--brat-lime-electric);
   font-size: 0.68rem;
   font-weight: 700;
   padding: 2px 8px;

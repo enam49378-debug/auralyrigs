@@ -5,3 +5,5 @@ Thumbs.db
 .env
 .idea/
 .vscode/
+# Capturas y resultados de pruebas locales
+tests/artifacts/

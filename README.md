@@ -17,12 +17,12 @@
 2. **⚡ Flujo de Edición Guiado en 3 Pasos:**
    - **Paso 1: Versos** — Sincronización en vivo de cada verso con la barra espaciadora (`Spacebar`), o búsqueda automática con **LRCLIB**.
    - **Paso 2: Frases & Palabras** — Afinación precisa palabra por palabra para el barrido karaoke fluido, distribución silábica automática y selector de tipo `Vocal (🎤)` vs `Spoken/Rap (🗣️)`.
-   - **Paso 3: Efectos & Ritmo (Brat Engine)** — Marcador de golpes de 808 (`Tecla B`), paletas de color Brat (`Lime`, `White`, `Red`, `Blue`, `Yellow`, `Ink`), tipografía cinética con desenfoque de texto y sacudidas de pantalla sincronizadas.
+   - **Paso 3: Efectos & Ritmo (Brat Engine)** — Marcador de golpes de 808 (`Tecla B`), paletas de color Brat (`Lime`, `White`, `Red`, `Blue`, `Yellow`, `Ink`), disposición, variantes y animación de entrada elegidas en el inspector. Los golpes decoran el fondo sin escalar las letras.
 
 3. **✨ Integración con Servidor Público LRCLIB:**
    - Consulta automática con `https://lrclib.net` para importar letras pre-sincronizadas sin necesidad de escribirlas manualmente.
 
-4. **🌐 Compatible 1:1 con la Extensión AuraMusic:**
+4. **🌐 Formato de letras para AuraMusic:**
    - Servidor local en `localhost:3000` con los endpoints `/api/status` y `/api/lyrics/get`.
    - Exportación de archivos JSON directamente para la base de datos comunitaria de GitHub (`database/`).
 
@@ -76,3 +76,20 @@ auralyrics/
 ## 👨‍💻 Autor y Créditos
 - Desarrollado por **Jesuluto** (`@enam49378-debug`)
 - Diseñado para complementar el ecosistema de **AuraMusic**
+
+## Revisión del editor Brat
+
+- Preview con más altura y botón **Ampliar vista previa**. Escape vuelve al editor. El texto se reajusta al tamaño de la escena.
+- Las canciones nuevas comienzan con una sola escena neutra. Solo el botón de generación por secciones crea una secuencia de escenas.
+- Se admiten las seis paletas del inspector, cuatro disposiciones, variantes de fuente, entradas de palabras y golpes 808. Los antiguos fondos de gradiente, colores personalizados, desenfoque y escalas configurables se descartan del formato de efectos.
+- Los borradores antiguos conservan sus letras y tiempos. Un borrador local tiene prioridad sobre la versión publicada. Cambiar de canción descarta las respuestas atrasadas de la anterior.
+- Guardar, copiar y descargar JSON usan el mismo formato y conservan keyframes, entradas y el estado de los golpes. GitHub Pages guarda en este navegador; para actualizar la biblioteca pública hay que publicar el JSON en el repositorio.
+- El servidor local conserva la marca de revisión humana, devuelve errores de JSON válidos y sirve únicamente los recursos públicos. Escucha en 127.0.0.1.
+
+### Código y comprobaciones
+
+`brat-effects.js` contiene el contrato de efectos compartido por el servidor y el editor. `editor-layout.css` concentra la adaptación del editor y el preview ampliado. `studio.js` gestiona las selecciones, reproducción y exportación.
+
+Ejecuta `npm test`. Las pruebas de navegador usan Chrome local y Node.js 22 o posterior, con respuestas de YouTube simuladas; no reproducen ni publican música. Puedes configurar `AURALYRICS_CHROME` para indicar otro ejecutable.
+
+Los keyframes quedan guardados en el proyecto y el JSON. Su aplicación en AuraMusic depende de que la versión instalada de la extensión consuma esos campos; este editor no actualiza automáticamente el motor de la extensión.
