@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="studio.css?v=2.0.3">
-  <link rel="stylesheet" href="editor-layout.css?v=2.0.3">
+  <link rel="stylesheet" href="studio.css?v=2.0.4">
+  <link rel="stylesheet" href="editor-layout.css?v=2.0.4">
 </head>
 <body class="studio-body">
 
@@ -415,6 +415,20 @@
               </div>
             </div>
 
+            <!-- Expresiones: caritas del modo Brat, guardadas aparte de la letra -->
+            <section class="expressions-panel" id="expressions-panel" aria-labelledby="expressions-title">
+              <div class="expressions-head">
+                <h3 id="expressions-title">Expresiones <small>(solo modo Brat)</small></h3>
+                <p>Elige una carita y agrégala en el momento actual: aparece al final de la frase que suena. Se guardan aparte de la letra y AuraMusic las muestra si activan "Expresiones".</p>
+              </div>
+              <div class="expressions-faces" id="expressions-faces" role="radiogroup" aria-label="Carita"></div>
+              <div class="expressions-actions">
+                <button type="button" class="btn-glow-lime" id="btn-add-expression">➕ Agregar en el tiempo actual</button>
+                <button type="button" class="btn-text-danger" id="btn-clear-expressions">Quitar todas</button>
+              </div>
+              <ul class="expressions-list" id="expressions-list" aria-label="Expresiones agregadas"></ul>
+            </section>
+
             <!-- Inspector Panel + Live Stage Preview Grid -->
             <div class="step3-effects-grid">
               <!-- Keyframe Inspector & Settings Column -->
@@ -655,10 +669,11 @@
   <!-- YouTube IFrame API -->
   <script src="https://www.youtube.com/iframe_api"></script>
   <!-- Main Studio App Engine -->
-  <script src="brat-effects.js?v=2.0.3"></script>
-  <script src="lyrics-timing.js?v=2.0.3"></script>
-  <script src="brat-scenes.js?v=2.0.3"></script>
-  <script src="published-timing.js?v=2.0.3"></script>
-  <script src="studio.js?v=2.0.3"></script>
+  <script src="brat-effects.js?v=2.0.4"></script>
+  <script src="lyrics-timing.js?v=2.0.4"></script>
+  <script src="brat-scenes.js?v=2.0.4"></script>
+  <script src="published-timing.js?v=2.0.4"></script>
+  <script src="expressions.js?v=2.0.4"></script>
+  <script src="studio.js?v=2.0.4"></script>
 </body>
 </html>

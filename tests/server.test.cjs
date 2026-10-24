@@ -11,13 +11,14 @@ test('local server saves supported scenes and serves only public assets',async t
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   t.after(async()=>{await new Promise(resolve=>server.close(resolve));assert.equal(path.dirname(path.resolve(dir)),path.resolve(os.tmpdir()));assert.ok(path.basename(dir).startsWith('auralyrics-api-'));fs.rmSync(dir,{recursive:true,force:true});});
   const base='http://127.0.0.1:'+server.address().port;
-  const payload={track:{title:'Mi canción',artist:'Autor',humanReviewed:true,videoId:'test',duration:20,lines:[{time:0,text:'Prueba'}],effects:{bgMode:'radial-glow',keyframes:[{time:0,palette:'blue',entry:'slide',layout:'center',shake:false}]}}};
+  const payload={track:{title:'Mi canción',artist:'Autor',humanReviewed:true,videoId:'test',duration:20,expressions:[{t:1,face:':3'},{t:5,face:'cara invalida'}],lines:[{time:0,text:'Prueba'}],effects:{bgMode:'radial-glow',keyframes:[{time:0,palette:'blue',entry:'slide',layout:'center',shake:false}]}}};
   const saved=await fetch(base+'/api/lyrics/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   assert.equal(saved.status,200);
   const file=(await saved.json()).fileName;
   const stored=JSON.parse(fs.readFileSync(path.join(dir,'private',file),'utf8'));
   const published=JSON.parse(fs.readFileSync(path.join(dir,file),'utf8'));
   assert.equal(published.track.lines.length,0,'public file never carries lyric text');
+  assert.deepEqual(published.track.expressions,[{t:1,face:':3'}],'expressions are saved apart from the lyrics and sanitised');
   assert.ok(!JSON.stringify(published).includes('Prueba'));
   assert.equal(stored.track.humanReviewed,true);
   assert.equal(stored.track.effects.keyframes[0].shake,false);

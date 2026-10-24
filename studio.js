@@ -1069,9 +1069,79 @@
      6. STEP 3: EDITOR DE VIDEO & KEYFRAMES DE COLOR
      ========================================================================= */
 
+  /* Expresiones (caritas): lista aparte de la letra, { t, face }. */
+  let selectedFace = ':3';
+
+  function expressionList() {
+    if (!state.currentTrack) return [];
+    return window.AuraMusic?.Expressions?.normalize(state.currentTrack.expressions, state.duration) || [];
+  }
+
+  function setExpressions(list) {
+    state.currentTrack.expressions = window.AuraMusic.Expressions.normalize(list, state.duration);
+    resetBratStage();
+    renderExpressionsPanel();
+    renderStep3Preview();
+  }
+
+  function renderStep3Preview() {
+    updateLiveCinemaStageFromKeyframes();
+    checkAndHighlightLiveVerse(state.currentTime);
+  }
+
+  function renderExpressionsPanel() {
+    const faces = document.getElementById('expressions-faces');
+    const list = document.getElementById('expressions-list');
+    const library = window.AuraMusic?.Expressions;
+    if (!faces || !list || !library || !state.currentTrack) return;
+    faces.replaceChildren();
+    library.FACES.forEach(face => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'expression-face' + (face === selectedFace ? ' is-selected' : '');
+      button.setAttribute('role', 'radio');
+      button.setAttribute('aria-checked', String(face === selectedFace));
+      button.textContent = face;
+      button.addEventListener('click', () => { selectedFace = face; renderExpressionsPanel(); });
+      faces.appendChild(button);
+    });
+    const items = expressionList();
+    list.replaceChildren();
+    if (!items.length) {
+      const empty = document.createElement('li');
+      empty.className = 'expressions-empty';
+      empty.textContent = 'Aún no hay expresiones: se usan las caritas automáticas de AuraMusic.';
+      list.appendChild(empty);
+    }
+    items.forEach(item => {
+      const row = document.createElement('li');
+      const seek = document.createElement('button');
+      seek.type = 'button';
+      seek.className = 'expression-seek';
+      seek.textContent = `${formatTime(item.t)}  ${item.face}`;
+      seek.title = 'Ir a este momento';
+      seek.addEventListener('click', () => seekTo(Math.max(0, item.t - 0.2)));
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'expression-remove';
+      remove.setAttribute('aria-label', `Quitar ${item.face} de ${formatTime(item.t)}`);
+      remove.textContent = '✕';
+      remove.addEventListener('click', () => setExpressions(expressionList().filter(other => other.t !== item.t)));
+      row.append(seek, remove);
+      list.appendChild(row);
+    });
+  }
+
+  function addExpressionAtCurrentTime() {
+    if (!state.currentTrack || !window.AuraMusic?.Expressions) return;
+    const t = Math.round(state.currentTime * 100) / 100;
+    setExpressions([...expressionList().filter(item => item.t !== t), { t, face: selectedFace }]);
+  }
+
   function renderStep3Effects() {
     if (!state.currentTrack) return;
     normalizeTrackEffects();
+    renderExpressionsPanel();
 
     renderVideoEditorTimeline();
     renderKeyframeInspector();
@@ -1575,13 +1645,15 @@
     const lines = bratSourceLines();
     const compiled = timing.compile(lines, { duration: state.duration });
     const phrases = [];
+    const expressionList = window.AuraMusic?.Expressions?.normalize(state.currentTrack.expressions, state.duration) || [];
+    const hasExpressions = expressionList.length > 0;
     lines.forEach((line, lineIndex) => {
       const info = compiled[lineIndex];
       if (!info?.words.length) return;
       for (const range of info.phrases) {
         const part = info.tokens.slice(range.start, range.end);
         const text = part.join('').trim();
-        const symbol = getBratContextSymbol(text);
+        const symbol = hasExpressions ? '' : getBratContextSymbol(text);
         if (symbol && !/^[?!¿¡]+$/u.test(symbol)) part[part.length - 1] = part[part.length - 1].trimEnd() + ` ${symbol} `;
         phrases.push({
           tokens: part,
@@ -1591,6 +1663,14 @@
         });
       }
     });
+    if (hasExpressions) {
+      window.AuraMusic.Expressions.assign(phrases, expressionList).forEach((face, index) => {
+        const phrase = phrases[index];
+        if (!phrase || !phrase.tokens.length) return;
+        phrase.symbol = face;
+        phrase.tokens[phrase.tokens.length - 1] = phrase.tokens[phrase.tokens.length - 1].trimEnd() + ` ${face} `;
+      });
+    }
     const seed = `${state.currentTrack.videoId || ''}:${state.currentTrack.title || ''}`;
     const plan = scenes.plan(phrases, seed);
     bratPhrases = plan.phrases;
@@ -2097,6 +2177,8 @@
     if (!state.currentTrack) return null;
     const cleanTrack = JSON.parse(JSON.stringify(state.currentTrack));
     cleanTrack.effects = BratEffects.normalize(cleanTrack.effects,cleanTrack.duration);
+    const faces = window.AuraMusic?.Expressions?.normalize(cleanTrack.expressions, cleanTrack.duration) || [];
+    if (faces.length) cleanTrack.expressions = faces; else delete cleanTrack.expressions;
     return {
       found: true,
       track: cleanTrack
@@ -2680,6 +2762,8 @@
 
     // Step 3 Video Editor Keyframe Studio Listeners
     document.getElementById('btn-add-keyframe-now')?.addEventListener('click', addKeyframeAtCurrentTime);
+    document.getElementById('btn-add-expression')?.addEventListener('click', addExpressionAtCurrentTime);
+    document.getElementById('btn-clear-expressions')?.addEventListener('click', () => { if (state.currentTrack) setExpressions([]); });
     document.getElementById('btn-delete-selected-kf')?.addEventListener('click', deleteSelectedKeyframe);
     document.getElementById('btn-auto-section-keyframes')?.addEventListener('click', autoGenerateSectionKeyframes);
 

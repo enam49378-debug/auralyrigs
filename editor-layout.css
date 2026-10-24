@@ -109,3 +109,19 @@ body.preview-expanded { overflow:hidden; }
 .w2-swatch.is-estimated { border-style:dashed; border-color:#8a97ab; background:#8a97ab26; }
 .w2-empty { padding:20px; color:#64748b; }
 @media (max-width:700px) { .w2-toolbar { gap:10px; } .w2-field input { width:80px; } }
+
+/* Paso 3: expresiones (caritas) */
+.expressions-panel { display:flex; flex-direction:column; gap:12px; margin:0 0 16px; padding:14px 16px; border:1px solid #ffffff14; border-radius:12px; background:#ffffff08; }
+.expressions-head h3 { margin:0 0 4px; font-size:14px; color:#fff; }
+.expressions-head small { color:#8a97ab; font-weight:500; }
+.expressions-head p { margin:0; color:#a9b5c8; font-size:12px; line-height:1.5; }
+.expressions-faces { display:flex; flex-wrap:wrap; gap:8px; }
+.expression-face { min-width:48px; padding:9px 12px; border:1px solid #ffffff26; border-radius:10px; background:#ffffff0d; color:#fff; font:700 15px ui-monospace,monospace; cursor:pointer; }
+.expression-face:hover { background:#ffffff1c; }
+.expression-face.is-selected { border-color:#8acf00; background:#8acf0030; color:#d6f58a; }
+.expressions-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.expressions-list { display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0; list-style:none; }
+.expressions-list li { display:flex; align-items:center; border:1px solid #ffffff1f; border-radius:999px; background:#0b0f16; overflow:hidden; }
+.expression-seek { padding:7px 12px; border:0; background:transparent; color:#e8eef8; font:600 12px ui-monospace,monospace; cursor:pointer; }
+.expression-remove { padding:7px 10px; border:0; border-left:1px solid #ffffff1f; background:transparent; color:#ff9bac; cursor:pointer; }
+.expressions-empty { border:0 !important; background:transparent !important; color:#8a97ab; font-size:12px; }

@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const BratEffects = require('./brat-effects.js');
 const PublishedTiming = require('./published-timing.js');
+const Expressions = require('./expressions.js');
 
 const PORT = process.env.PORT || 3000;
 const DB_DIR = path.join(__dirname, 'database');
@@ -266,7 +267,8 @@ function createServer({ databaseDir = DB_DIR, privateDir } = {}) {
               duration: track.duration || 0,
               lines: cleanLines(track.lines),
               humanReviewed: !!track.humanReviewed,
-              effects: BratEffects.normalize(track.effects, track.duration)
+              effects: BratEffects.normalize(track.effects, track.duration),
+              ...(Expressions.normalize(track.expressions, track.duration).length ? { expressions: Expressions.normalize(track.expressions, track.duration) } : {})
             }
           };
 
@@ -308,7 +310,7 @@ function createServer({ databaseDir = DB_DIR, privateDir } = {}) {
 
     // Serve public assets only; never expose .git, source server files or private files.
     if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405); res.end(); return; }
-    const allowed = new Set(['/', '/index.html', '/studio.css', '/editor-layout.css', '/studio.js', '/brat-effects.js', '/lyrics-timing.js', '/brat-scenes.js', '/published-timing.js']);
+    const allowed = new Set(['/', '/index.html', '/studio.css', '/editor-layout.css', '/studio.js', '/brat-effects.js', '/lyrics-timing.js', '/brat-scenes.js', '/published-timing.js', '/expressions.js']);
     if (!allowed.has(pathname) && !/^\/database\/[a-zA-Z0-9_-]+\.json$/.test(pathname)) {
       res.writeHead(404); res.end('Archivo no encontrado'); return;
     }
