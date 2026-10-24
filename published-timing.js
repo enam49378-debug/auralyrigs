@@ -19,7 +19,8 @@
   }
 
   // Ficha completa (con letra) -> tiempos sin texto.
-  function extract(track) {
+  // `lrclibId` (opcional) indica el registro exacto de LRCLIB del que salen las líneas; no es texto.
+  function extract(track, { lrclibId } = {}) {
     const lines = [];
     for (const line of track?.lines || []) {
       const words = Array.isArray(line.words) ? line.words : [];
@@ -30,7 +31,7 @@
       if (tokens(text).length !== pairs.length) continue;
       lines.push({ t: round(Number(line.time)), h: hashLine(text), w: pairs });
     }
-    return { version: VERSION, lines };
+    return { version: VERSION, ...(lrclibId ? { lrclibId } : {}), lines };
   }
 
   // Aplica tiempos publicados a las líneas de otra fuente de letra. Solo cambia las que coinciden
@@ -65,7 +66,37 @@
     return { lines: result, matched, total: candidates };
   }
 
-  const api = { VERSION, hashLine, extract, merge };
+  const key = value => String(value || '').normalize('NFKD').toLocaleLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+
+  // Identifica la ficha de una canción sin confundir versiones. Orden:
+  //  1) ID de video exacto (`videoId` o la lista `videoIds` de la ficha);
+  //  2) solo si no hay ID: título EXACTO (con sus paréntesis), artista coincidente y duración similar.
+  // "Lucia" y "Lucia (La Jangada)" son canciones distintas y nunca se mezclan.
+  function findEntry(tracks, { videoId, title, artist, duration } = {}) {
+    const list = Array.isArray(tracks) ? tracks : [];
+    if (videoId) {
+      const byId = list.find(track => track.videoId === videoId || (Array.isArray(track.videoIds) && track.videoIds.includes(videoId)));
+      if (byId) return byId;
+    }
+    const wantedTitle = key(title), wantedArtist = key(artist);
+    if (!wantedTitle || !wantedArtist) return null;
+    return list.find(track => {
+      const candidateArtist = key(track.artist);
+      if (key(track.title) !== wantedTitle || !candidateArtist) return false;
+      if (!(candidateArtist.includes(wantedArtist) || wantedArtist.includes(candidateArtist))) return false;
+      const known = Number(track.duration), played = Number(duration);
+      return !(known > 0 && played > 0) || Math.abs(known - played) <= 4;
+    }) || null;
+  }
+
+  // Los tiempos solo se usan si la letra recibida es realmente la misma: al menos `ratio` de las
+  // líneas publicadas deben coincidir. Si no, es otra versión y se descartan por completo.
+  function accept(result, timing, ratio = .6) {
+    const published = Array.isArray(timing?.lines) ? timing.lines.length : 0;
+    return published > 0 && result.matched >= Math.ceil(published * ratio);
+  }
+
+  const api = { VERSION, hashLine, extract, merge, findEntry, accept };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) { root.AuraMusic = root.AuraMusic || {}; root.AuraMusic.PublishedTiming = api; }
 })(typeof window !== 'undefined' ? window : null);

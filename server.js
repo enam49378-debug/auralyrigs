@@ -147,6 +147,11 @@ function writeFileAtomic(filePath, content) {
   fs.renameSync(tmp, filePath);
 }
 
+// Conserva el registro de LRCLIB ya indicado en la ficha pública al volver a guardarla.
+function previousLrclibId(filePath) {
+  try { return JSON.parse(fs.readFileSync(filePath, 'utf8')).track?.timing?.lrclibId || undefined; } catch (_) { return undefined; }
+}
+
 function cleanLines(lines) {
   if (!Array.isArray(lines)) return [];
   return lines
@@ -269,7 +274,7 @@ function createServer({ databaseDir = DB_DIR, privateDir } = {}) {
           writeFileAtomic(path.join(PRIVATE, filename), JSON.stringify(formatted, null, 2));
           const publicVersion = {
             ...formatted,
-            track: { ...formatted.track, lines: [], timing: PublishedTiming.extract(formatted.track) }
+            track: { ...formatted.track, lines: [], timing: PublishedTiming.extract(formatted.track, { lrclibId: track.lrclibId || previousLrclibId(filePath) }) }
           };
           writeFileAtomic(filePath, JSON.stringify(publicVersion, null, 2));
           console.log(`✨ AuraLyrics: guardada ${filename} (letra completa en private/, tiempos en database/)`);
