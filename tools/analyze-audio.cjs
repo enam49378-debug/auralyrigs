@@ -4,7 +4,7 @@
 //
 //   node tools/analyze-audio.cjs cancion.mp3 database/artista_cancion.json            (vista previa)
 //   node tools/analyze-audio.cjs cancion.mp3 database/artista_cancion.json --write    (guarda cambios)
-//   Opciones: --beats-only | --words-only | --window 0.12
+//   Opciones: --beats-only | --words-only | --window 0.12 | --density 0.2 (fracción de golpes de bajo que se conserva)
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
@@ -65,10 +65,14 @@ function detectOnsets(samples, { sampleRate = SAMPLE_RATE, minGap = .12, sensiti
 }
 
 // Golpes de bajo: solo los ataques fuertes de la banda grave.
-function detectBassBeats(bassSamples, options = {}) {
-  const onsets = detectOnsets(bassSamples, { minGap: .22, sensitivity: 1.8, ...options });
+// `density` es la fracción de ataques graves que se conserva (los más fuertes): evita un 808 en cada bombo.
+function detectBassBeats(bassSamples, { density = .2, ...options } = {}) {
+  const onsets = detectOnsets(bassSamples, { minGap: .45, sensitivity: 1.8, ...options });
   if (!onsets.length) return [];
-  const threshold = Math.max(...onsets.map(o => o.strength)) * .35;
+  const strengths = onsets.map(o => o.strength).sort((a, b) => a - b);
+  const floor = Math.max(...strengths) * .35;
+  const quantile = onsets.length >= 10 ? strengths[Math.min(strengths.length - 1, Math.floor(strengths.length * (1 - density)))] : 0;
+  const threshold = Math.max(floor, quantile);
   return onsets.filter(o => o.strength >= threshold).map(o => o.time);
 }
 
@@ -131,7 +135,9 @@ function run(argv) {
   console.log('🎧 Analizando audio…');
   const result = {};
   if (!flag('words-only')) {
-    const bass = detectBassBeats(decode(audio, 'lowpass=f=140'));
+    const densityIndex = argv.indexOf('--density');
+    const density = densityIndex >= 0 ? Number(argv[densityIndex + 1]) || .2 : .2;
+    const bass = detectBassBeats(decode(audio, 'lowpass=f=140'), { density });
     track.effects = track.effects || {};
     track.effects.bassBeats = bass.filter(t => !track.duration || t <= track.duration);
     result.beats = track.effects.bassBeats.length;
