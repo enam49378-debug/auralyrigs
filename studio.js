@@ -645,130 +645,417 @@
     }
   }
 
+  /* =========================================================================
+     Paso 2: línea de tiempo de palabras con auto-ajuste
+     Arrastra una palabra para moverla, sus bordes para cambiar duración. Según la
+     política elegida, las vecinas se empujan solas para no solaparse.
+     ========================================================================= */
+
+  const MIN_WORD = 0.05;
+  const MIN_GAP = 0.02;
+  const step2 = { selected: 0, pps: 150, policy: 'push', undo: [], drag: null, previewTimer: null, lastCurrent: -1, t0: 0 };
+  const round2 = value => Math.round(value * 100) / 100;
+  const clampNumber = (value, min, max) => Math.min(max, Math.max(min, value));
+
+  function step2Line() {
+    return state.currentTrack?.lines?.[state.selectedVerseIndex] || null;
+  }
+
+  function ensureLineWords(line, index) {
+    if (Array.isArray(line.words) && line.words.length) return;
+    const lines = state.currentTrack.lines;
+    const nextTime = index < lines.length - 1 ? lines[index + 1].time : line.time + 3.5;
+    line.words = estimateWordsForLine(line.text, line.time, nextTime, state.syllablePace || 0.35);
+  }
+
+  function step2Bounds(index) {
+    const prev = state.currentTrack.lines[index - 1];
+    return { min: prev ? prev.time + MIN_WORD : 0 };
+  }
+
+  function step2PushUndo() {
+    const line = step2Line();
+    if (!line) return;
+    step2.undo.push({ index: state.selectedVerseIndex, time: line.time, words: JSON.parse(JSON.stringify(line.words)) });
+    if (step2.undo.length > 80) step2.undo.shift();
+    updateStep2UndoButton();
+  }
+
+  function updateStep2UndoButton() {
+    const button = document.getElementById('w2-undo');
+    if (button) button.disabled = !step2.undo.length;
+  }
+
+  function step2Undo() {
+    const snapshot = step2.undo.pop();
+    if (!snapshot) return;
+    const line = state.currentTrack?.lines?.[snapshot.index];
+    if (!line) return;
+    line.time = snapshot.time;
+    line.words = snapshot.words;
+    state.selectedVerseIndex = snapshot.index;
+    const dropdown = document.getElementById('words-verse-dropdown');
+    if (dropdown) dropdown.value = String(snapshot.index);
+    renderStep2WordsStage();
+  }
+
+  // Calcula la nueva posición de todas las palabras de un verso al editar una (función pura).
+  function computeWordEdit(base, index, kind, value, policy, bounds) {
+    const words = base.map(item => ({ start: item.start, end: item.end }));
+    const target = words[index];
+    const duration = target.end - target.start;
+    const prevEnd = index > 0 ? words[index - 1].end + MIN_GAP : bounds.min;
+    const nextStart = index < words.length - 1 ? words[index + 1].start - MIN_GAP : Infinity;
+
+    if (kind === 'move') {
+      let start = target.start + value;
+      if (policy === 'solo') start = clampNumber(start, prevEnd, nextStart - duration);
+      else start = Math.max(start, bounds.min);
+      const delta = start - target.start;
+      target.start = start;
+      target.end += delta;
+      if (policy === 'ripple') for (let k = index + 1; k < words.length; k++) { words[k].start += delta; words[k].end += delta; }
+    } else if (kind === 'end') {
+      let end = Math.max(target.start + MIN_WORD, value);
+      if (policy === 'solo') end = Math.min(end, nextStart);
+      const delta = end - target.end;
+      target.end = end;
+      if (policy === 'ripple') for (let k = index + 1; k < words.length; k++) { words[k].start += delta; words[k].end += delta; }
+    } else {
+      let start = Math.min(value, target.end - MIN_WORD);
+      start = policy === 'solo' ? Math.max(start, prevEnd) : Math.max(start, bounds.min);
+      target.start = start;
+    }
+
+    if (policy !== 'solo') {
+      for (let k = index + 1; k < words.length; k++) {
+        const minimum = words[k - 1].end + MIN_GAP;
+        if (words[k].start < minimum) { const shift = minimum - words[k].start; words[k].start += shift; words[k].end += shift; }
+      }
+      for (let k = index - 1; k >= 0; k--) {
+        const maximum = words[k + 1].start - MIN_GAP;
+        if (words[k].end > maximum) { const shift = words[k].end - maximum; words[k].start -= shift; words[k].end -= shift; }
+      }
+      if (words[0].start < bounds.min) {
+        const shift = bounds.min - words[0].start;
+        words.forEach(word => { word.start += shift; word.end += shift; });
+      }
+    }
+    return words;
+  }
+
+  function commitWordEdit(line, words) {
+    line.words.forEach((word, i) => {
+      const start = round2(words[i].start), end = round2(Math.max(words[i].end, words[i].start + MIN_WORD));
+      if (Math.abs(start - word.start) > 0.004 || Math.abs(end - word.end) > 0.004) word.estimated = false;
+      word.start = start;
+      word.end = end;
+    });
+    line.time = round2(line.words[0].start);
+  }
+
+  function editSelectedWord(kind, value) {
+    const line = step2Line();
+    if (!line) return;
+    const base = line.words.map(word => ({ start: word.start, end: word.end }));
+    const index = clampNumber(step2.selected, 0, base.length - 1);
+    const absolute = kind === 'move' ? value : value;
+    commitWordEdit(line, computeWordEdit(base, index, kind, absolute, step2.policy, step2Bounds(state.selectedVerseIndex)));
+  }
+
+  function previewStep2Range(start, end) {
+    clearTimeout(step2.previewTimer);
+    seekTo(Math.max(0, start - 0.15));
+    play();
+    step2.previewTimer = setTimeout(pause, Math.max(250, (end - start + 0.45) * 1000));
+  }
+
+  function selectStep2Verse(index) {
+    const lines = state.currentTrack?.lines || [];
+    if (index < 0 || index >= lines.length) return;
+    state.selectedVerseIndex = index;
+    step2.selected = 0;
+    const dropdown = document.getElementById('words-verse-dropdown');
+    if (dropdown) dropdown.value = String(index);
+    renderStep2WordsStage();
+    seekTo(Math.max(0, lines[index].time - 0.3));
+  }
+
+  function layoutStep2Blocks() {
+    const line = step2Line();
+    const track = document.getElementById('w2-track');
+    if (!line || !track) return;
+    const words = line.words;
+    const pps = step2.pps;
+    track.style.width = Math.max(track.parentElement.clientWidth - 2, (words[words.length - 1].end - step2.t0 + 1.4) * pps) + 'px';
+    track.querySelectorAll('.w2-word').forEach(block => {
+      const word = words[Number(block.dataset.index)];
+      if (!word) return;
+      block.style.left = (word.start - step2.t0) * pps + 'px';
+      block.style.width = Math.max(10, (word.end - word.start) * pps) + 'px';
+      block.classList.toggle('is-estimated', !!word.estimated);
+      block.querySelector('.w2-time').textContent = word.start.toFixed(2);
+      block.setAttribute('aria-label', `${word.word}, ${word.start.toFixed(2)} a ${word.end.toFixed(2)} segundos`);
+    });
+    const selected = words[step2.selected];
+    const startInput = document.getElementById('w2-start');
+    const endInput = document.getElementById('w2-end');
+    if (selected && startInput && document.activeElement !== startInput) startInput.value = selected.start.toFixed(2);
+    if (selected && endInput && document.activeElement !== endInput) endInput.value = selected.end.toFixed(2);
+  }
+
+  function updateStep2Playhead(curT) {
+    const playhead = document.getElementById('w2-playhead');
+    const line = step2Line();
+    if (!playhead || !line?.words?.length) return;
+    playhead.style.left = (curT - step2.t0) * step2.pps + 'px';
+    let current = -1;
+    line.words.forEach((word, i) => { if (curT >= word.start && curT < word.end) current = i; });
+    if (current !== step2.lastCurrent) {
+      step2.lastCurrent = current;
+      document.querySelectorAll('#w2-track .w2-word').forEach(block => block.classList.toggle('is-current', Number(block.dataset.index) === current));
+    }
+  }
+
+  function selectStep2Word(index, { seek = false } = {}) {
+    const line = step2Line();
+    if (!line) return;
+    step2.selected = clampNumber(index, 0, line.words.length - 1);
+    document.querySelectorAll('#w2-track .w2-word').forEach(block => block.classList.toggle('is-selected', Number(block.dataset.index) === step2.selected));
+    const word = line.words[step2.selected];
+    const label = document.getElementById('w2-selected-label');
+    if (label) label.textContent = word.word;
+    layoutStep2Blocks();
+    if (seek) seekTo(word.start);
+  }
+
+  function startStep2Drag(event, block, kind) {
+    const line = step2Line();
+    if (!line || event.button !== 0) return;
+    event.preventDefault();
+    const index = Number(block.dataset.index);
+    selectStep2Word(index);
+    step2PushUndo();
+    step2.drag = {
+      kind, index, startX: event.clientX, moved: false, pointerId: event.pointerId,
+      base: line.words.map(word => ({ start: word.start, end: word.end }))
+    };
+    block.setPointerCapture?.(event.pointerId);
+    block.classList.add('is-dragging');
+  }
+
+  function moveStep2Drag(event) {
+    const drag = step2.drag;
+    const line = step2Line();
+    if (!drag || !line || event.pointerId !== drag.pointerId) return;
+    const delta = (event.clientX - drag.startX) / step2.pps;
+    if (Math.abs(event.clientX - drag.startX) > 2) drag.moved = true;
+    const source = drag.base[drag.index];
+    const value = drag.kind === 'move' ? delta : drag.kind === 'end' ? source.end + delta : source.start + delta;
+    commitWordEdit(line, computeWordEdit(drag.base, drag.index, drag.kind, value, step2.policy, step2Bounds(state.selectedVerseIndex)));
+    layoutStep2Blocks();
+  }
+
+  function endStep2Drag(event) {
+    const drag = step2.drag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    step2.drag = null;
+    document.querySelectorAll('#w2-track .w2-word.is-dragging').forEach(block => block.classList.remove('is-dragging'));
+    const line = step2Line();
+    if (!drag.moved) {
+      step2.undo.pop();
+      updateStep2UndoButton();
+      if (line) seekTo(line.words[drag.index].start);
+    } else {
+      renderStep2WordsStage();
+    }
+  }
+
   function renderStep2WordsStage() {
     const stage = document.getElementById('step2-words-stage');
     if (!stage || !state.currentTrack) return;
-
-    stage.innerHTML = '';
-    const line = state.currentTrack.lines[state.selectedVerseIndex];
-
+    stage.replaceChildren();
+    const line = step2Line();
     if (!line) {
-      stage.innerHTML = `<div style="padding: 20px; color: #64748b;">Selecciona un verso para editar sus frases y palabras.</div>`;
+      stage.innerHTML = '<div class="w2-empty">Selecciona un verso para editar sus palabras.</div>';
       return;
     }
+    ensureLineWords(line, state.selectedVerseIndex);
+    if (!line.words.length) {
+      stage.innerHTML = '<div class="w2-empty">Este verso no tiene palabras.</div>';
+      return;
+    }
+    step2.selected = clampNumber(step2.selected, 0, line.words.length - 1);
+    step2.lastCurrent = -1;
+    step2.t0 = Math.max(0, Math.min(line.words[0].start, line.time) - 0.6);
 
-    // Asegurar palabras estimadas si no existen
-    if (!Array.isArray(line.words) || line.words.length === 0) {
-      const nextTime = (state.selectedVerseIndex < state.currentTrack.lines.length - 1)
-        ? state.currentTrack.lines[state.selectedVerseIndex + 1].time
-        : (line.time + 3.5);
-      line.words = estimateWordsForLine(line.text, line.time, nextTime, state.syllablePace || 0.35);
+    const total = state.currentTrack.lines.length;
+    const wrap = document.createElement('div');
+    wrap.className = 'w2-wrap';
+    wrap.innerHTML = `
+      <div class="w2-toolbar">
+        <div class="w2-group">
+          <button type="button" class="w2-btn" id="w2-prev" title="Verso anterior" ${state.selectedVerseIndex === 0 ? 'disabled' : ''}>‹</button>
+          <span class="w2-verse-count">Verso ${state.selectedVerseIndex + 1} / ${total}</span>
+          <button type="button" class="w2-btn" id="w2-next" title="Verso siguiente" ${state.selectedVerseIndex >= total - 1 ? 'disabled' : ''}>›</button>
+          <button type="button" class="w2-btn w2-primary" id="w2-play-verse">▶ Escuchar verso</button>
+          <button type="button" class="w2-btn" id="w2-undo" title="Deshacer (Ctrl+Z)" disabled>↶ Deshacer</button>
+        </div>
+        <div class="w2-group" role="radiogroup" aria-label="Qué pasa con las demás palabras">
+          <span class="w2-label">Al mover una palabra:</span>
+          <button type="button" class="w2-seg" role="radio" data-policy="solo" title="Solo se mueve esta palabra y no puede pisar a las vecinas">Solo esta</button>
+          <button type="button" class="w2-seg" role="radio" data-policy="push" title="Las vecinas se apartan solas lo justo para no solaparse">Empujar vecinas</button>
+          <button type="button" class="w2-seg" role="radio" data-policy="ripple" title="Todas las palabras siguientes se mueven con ella">Mover siguientes</button>
+        </div>
+        <div class="w2-group">
+          <label class="w2-label" for="w2-zoom">Zoom</label>
+          <input type="range" id="w2-zoom" min="60" max="400" step="10" value="${step2.pps}">
+        </div>
+      </div>
+      <div class="w2-scroll" id="w2-scroll">
+        <div class="w2-track" id="w2-track">
+          <div class="w2-ruler" id="w2-ruler"></div>
+          <div class="w2-phrases" id="w2-phrases"></div>
+          <div class="w2-words" id="w2-words"></div>
+          <div class="w2-playhead" id="w2-playhead"></div>
+        </div>
+      </div>
+      <div class="w2-inspector">
+        <div class="w2-selected"><span class="w2-label">Palabra</span><strong id="w2-selected-label"></strong></div>
+        <label class="w2-field">Inicio <input type="number" id="w2-start" step="0.01" min="0"></label>
+        <label class="w2-field">Fin <input type="number" id="w2-end" step="0.01" min="0"></label>
+        <div class="w2-group w2-nudges">
+          <button type="button" class="w2-btn" data-nudge="-0.1">−0.1</button>
+          <button type="button" class="w2-btn" data-nudge="-0.05">−0.05</button>
+          <button type="button" class="w2-btn" data-nudge="-0.01">−0.01</button>
+          <button type="button" class="w2-btn" data-nudge="0.01">+0.01</button>
+          <button type="button" class="w2-btn" data-nudge="0.05">+0.05</button>
+          <button type="button" class="w2-btn" data-nudge="0.1">+0.1</button>
+          <button type="button" class="w2-btn w2-primary" id="w2-play-word">▶ Escuchar palabra</button>
+        </div>
+      </div>
+      <p class="w2-hint">Arrastra una palabra para moverla y sus bordes para cambiar su duración. Teclado: ← → mueven 0,05 s (Shift 0,01 · Alt 0,25), Enter la escucha, Ctrl+Z deshace.
+        <span class="w2-legend"><i class="w2-swatch"></i> medida del audio o editada</span>
+        <span class="w2-legend"><i class="w2-swatch is-estimated"></i> estimada</span></p>`;
+    stage.appendChild(wrap);
+
+    // Regla de tiempo cada 0,5 s
+    const ruler = wrap.querySelector('#w2-ruler');
+    const last = line.words[line.words.length - 1].end + 2.4;
+    for (let t = Math.ceil(step2.t0 * 2) / 2; t <= last; t += 0.5) {
+      const tick = document.createElement('span');
+      tick.className = 'w2-tick' + (Number.isInteger(t) ? ' is-major' : '');
+      tick.style.left = (t - step2.t0) * step2.pps + 'px';
+      if (Number.isInteger(t)) tick.dataset.label = t.toFixed(0) + 's';
+      ruler.appendChild(tick);
     }
 
-    // Segmentación de frases de AuraMusic
-    const tokens = tokenize(line.text);
-    const phrases = splitLinePhrases(tokens, line.words);
-
-    const container = document.createElement('div');
-    container.className = 'phrase-blocks-flow';
-
-    phrases.forEach((phrase, pIdx) => {
-      const pCard = document.createElement('div');
-      pCard.className = 'phrase-block-card';
-
-      const pStart = phrase.startTime.toFixed(2);
-      const pEnd = phrase.endTime.toFixed(2);
-      const dur = Math.max(0.1, phrase.endTime - phrase.startTime).toFixed(2);
-
-      pCard.innerHTML = `
-        <div class="phrase-block-header">
-          <div class="phrase-meta-info">
-            <span class="phrase-index-tag">Frase #${pIdx + 1}</span>
-            <span>Inicio: <strong>${pStart}s</strong></span>
-            <span>Fin: <strong>${pEnd}s</strong></span>
-            <span style="color:var(--accent-lime)">(${dur}s)</span>
-          </div>
-          <div class="phrase-actions">
-            <button class="btn-split-phrase" data-pidx="${pIdx}">✂️ Dividir Frase</button>
-            ${pIdx < phrases.length - 1 ? `<button class="btn-merge-phrase" data-pidx="${pIdx}">🔗 Unir con Siguiente</button>` : ''}
-          </div>
-        </div>
-        <div class="phrase-words-row" id="phrase-words-${pIdx}"></div>
-      `;
-
-      const wordsRow = pCard.querySelector(`#phrase-words-${pIdx}`);
-
-      phrase.words.forEach((w) => {
-        const wChip = document.createElement('div');
-        wChip.className = 'word-chip-box';
-
-        const isCurrent = state.currentTime >= w.start && state.currentTime < w.end;
-        if (isCurrent) wChip.classList.add('current-word');
-
-        wChip.innerHTML = `
-          <div class="word-text-line">
-            <span>${escapeHtml(w.word)}</span>
-            <span class="word-time-badge">${w.start.toFixed(2)}s</span>
-          </div>
-          <div class="word-nudge-row">
-            <button class="btn-word-nudge btn-nudge-minus" title="Adelantar -0.1s">-0.1s</button>
-            <button class="btn-word-nudge btn-play-single-word" title="Escuchar">▶</button>
-            <button class="btn-word-nudge btn-nudge-plus" title="Atrasar +0.1s">+0.1s</button>
-          </div>
-        `;
-
-        wChip.querySelector('.btn-nudge-minus').addEventListener('click', (e) => {
-          e.stopPropagation();
-          w.start = Math.max(0, Math.round((w.start - 0.1) * 100) / 100);
-          w.end = Math.max(w.start + 0.05, Math.round((w.end - 0.1) * 100) / 100);
-          renderStep2WordsStage();
-        });
-
-        wChip.querySelector('.btn-nudge-plus').addEventListener('click', (e) => {
-          e.stopPropagation();
-          w.start = Math.round((w.start + 0.1) * 100) / 100;
-          w.end = Math.round((w.end + 0.1) * 100) / 100;
-          renderStep2WordsStage();
-        });
-
-        wChip.querySelector('.btn-play-single-word').addEventListener('click', (e) => {
-          e.stopPropagation();
-          seekTo(w.start);
-          play();
-        });
-
-        wordsRow.appendChild(wChip);
-      });
-
-      // Split button listener
-      pCard.querySelector('.btn-split-phrase')?.addEventListener('click', () => {
-        if (phrase.words.length <= 1) {
-          alert('Esta frase tiene solo 1 palabra, no se puede dividir más.');
-          return;
-        }
-        const mid = Math.floor(phrase.words.length / 2);
-        const secondHalfStart = phrase.words[mid].start;
-        phrase.words[mid - 1].end = secondHalfStart;
-        renderStep2WordsStage();
-      });
-
-      // Merge button listener
-      pCard.querySelector('.btn-merge-phrase')?.addEventListener('click', () => {
-        if (pIdx < phrases.length - 1) {
-          const nextP = phrases[pIdx + 1];
-          phrase.endTime = nextP.endTime;
-          if (phrase.words.length && nextP.words.length) {
-            phrase.words[phrase.words.length - 1].end = nextP.words[0].start;
-          }
-          renderStep2WordsStage();
-        }
-      });
-
-      container.appendChild(pCard);
+    // Frases (misma segmentación que AuraMusic)
+    const phrases = splitLinePhrases(tokenize(line.text), line.words);
+    const phraseRow = wrap.querySelector('#w2-phrases');
+    phrases.forEach((phrase, i) => {
+      const bracket = document.createElement('div');
+      bracket.className = 'w2-phrase';
+      bracket.dataset.start = phrase.startIdx;
+      bracket.dataset.end = phrase.endIdx;
+      bracket.textContent = 'Frase ' + (i + 1);
+      phraseRow.appendChild(bracket);
     });
 
-    stage.appendChild(container);
+    const wordsRow = wrap.querySelector('#w2-words');
+    line.words.forEach((word, i) => {
+      const block = document.createElement('div');
+      block.className = 'w2-word';
+      block.dataset.index = String(i);
+      block.tabIndex = 0;
+      block.setAttribute('role', 'button');
+      block.innerHTML = `<span class="w2-handle w2-handle-start" data-kind="start"></span><span class="w2-text"></span><span class="w2-time"></span><span class="w2-handle w2-handle-end" data-kind="end"></span>`;
+      block.querySelector('.w2-text').textContent = word.word;
+      block.addEventListener('pointerdown', event => startStep2Drag(event, block, event.target.dataset.kind || 'move'));
+      block.addEventListener('pointermove', moveStep2Drag);
+      block.addEventListener('pointerup', endStep2Drag);
+      block.addEventListener('pointercancel', endStep2Drag);
+      block.addEventListener('dblclick', () => { const w = step2Line().words[i]; previewStep2Range(w.start, w.end); });
+      block.addEventListener('focus', () => { if (step2.selected !== i) selectStep2Word(i); });
+      block.addEventListener('keydown', event => {
+        const stepSize = event.shiftKey ? 0.01 : event.altKey ? 0.25 : 0.05;
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          event.preventDefault(); event.stopPropagation();
+          step2PushUndo();
+          step2.selected = i;
+          editSelectedWord('move', event.key === 'ArrowLeft' ? -stepSize : stepSize);
+          layoutStep2Blocks();
+        } else if (event.key === 'Enter') {
+          event.preventDefault(); event.stopPropagation();
+          const w = step2Line().words[i]; previewStep2Range(w.start, w.end);
+        }
+      });
+      wordsRow.appendChild(block);
+    });
+
+    // Eventos de la barra y el inspector
+    wrap.querySelector('#w2-prev').addEventListener('click', () => selectStep2Verse(state.selectedVerseIndex - 1));
+    wrap.querySelector('#w2-next').addEventListener('click', () => selectStep2Verse(state.selectedVerseIndex + 1));
+    wrap.querySelector('#w2-undo').addEventListener('click', step2Undo);
+    wrap.querySelector('#w2-play-verse').addEventListener('click', () => {
+      const first = line.words[0], final = line.words[line.words.length - 1];
+      previewStep2Range(first.start, final.end);
+    });
+    wrap.querySelectorAll('.w2-seg').forEach(button => {
+      const active = button.dataset.policy === step2.policy;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-checked', String(active));
+      button.addEventListener('click', () => {
+        step2.policy = button.dataset.policy;
+        wrap.querySelectorAll('.w2-seg').forEach(other => {
+          const on = other === button;
+          other.classList.toggle('is-active', on);
+          other.setAttribute('aria-checked', String(on));
+        });
+      });
+    });
+    wrap.querySelector('#w2-zoom').addEventListener('input', event => {
+      step2.pps = Number(event.target.value);
+      renderStep2WordsStage();
+    });
+    wrap.querySelector('#w2-scroll').addEventListener('pointerdown', event => {
+      if (event.target.closest('.w2-word')) return;
+      const track = document.getElementById('w2-track');
+      const x = event.clientX - track.getBoundingClientRect().left;
+      seekTo(step2.t0 + x / step2.pps);
+    });
+    wrap.querySelectorAll('[data-nudge]').forEach(button => button.addEventListener('click', () => {
+      step2PushUndo();
+      editSelectedWord('move', Number(button.dataset.nudge));
+      layoutStep2Blocks();
+    }));
+    const applyInput = (kind, input) => {
+      const value = parseFloat(input.value);
+      if (!Number.isFinite(value) || value < 0) { layoutStep2Blocks(); return; }
+      step2PushUndo();
+      editSelectedWord(kind, value);
+      layoutStep2Blocks();
+    };
+    wrap.querySelector('#w2-start').addEventListener('change', event => applyInput('start', event.target));
+    wrap.querySelector('#w2-end').addEventListener('change', event => applyInput('end', event.target));
+    wrap.querySelector('#w2-play-word').addEventListener('click', () => {
+      const w = line.words[step2.selected]; previewStep2Range(w.start, w.end);
+    });
+
+    layoutStep2Blocks();
+    selectStep2Word(step2.selected);
+    updateStep2UndoButton();
+    updateStep2Playhead(state.currentTime);
+    stage.querySelector('#w2-scroll').scrollLeft = 0;
   }
+
+  document.addEventListener('keydown', event => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && state.currentView === 'editor' && state.activeStep === 2 &&
+        !event.target.closest?.('input,textarea,select')) {
+      event.preventDefault();
+      step2Undo();
+    }
+  });
 
   /* =========================================================================
      6. STEP 3: EDITOR DE VIDEO & KEYFRAMES DE COLOR
@@ -1140,6 +1427,7 @@
     const timeCurEl = document.getElementById('dock-time-current');
     const slider = document.getElementById('dock-seeker-slider');
     if (timeCurEl) timeCurEl.textContent = formatTime(curT);
+    if (state.activeStep === 2) updateStep2Playhead(curT);
 
     if (slider && state.duration > 0) {
       const pct = (curT / state.duration) * 100;

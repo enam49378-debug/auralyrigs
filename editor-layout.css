@@ -63,3 +63,49 @@ body.preview-expanded { overflow:hidden; }
 }
 /* El trazo solo existe en la escena "Trazo"; en cualquier otra queda oculto aunque llegue CSS viejo en caché. */
 .cinema-brat-stage:not([data-layout="scribble"]) .cinema-brat-scribble { display:none; }
+
+/* Paso 2: línea de tiempo de palabras */
+.w2-wrap { display:flex; flex-direction:column; gap:14px; min-width:0; }
+.w2-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:12px 22px; padding:10px 12px; border:1px solid #ffffff14; border-radius:12px; background:#ffffff08; }
+.w2-group { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.w2-label { color:#a9b5c8; font-size:11px; }
+.w2-verse-count { color:#e8eef8; font-size:12px; font-weight:700; min-width:92px; text-align:center; }
+.w2-btn, .w2-seg { border:1px solid #ffffff22; border-radius:8px; background:#ffffff0d; color:#e8eef8; font:600 12px/1 inherit; padding:8px 11px; cursor:pointer; }
+.w2-btn:hover:not(:disabled), .w2-seg:hover { background:#ffffff1c; }
+.w2-btn:disabled { opacity:.4; cursor:default; }
+.w2-primary { border-color:#8acf0066; background:#8acf0022; color:#c9f06a; }
+.w2-seg.is-active { border-color:#8acf00; background:#8acf0030; color:#d6f58a; }
+.w2-scroll { position:relative; overflow-x:auto; overflow-y:hidden; border:1px solid #ffffff14; border-radius:12px; background:#0b0f16; padding-bottom:6px; }
+.w2-track { position:relative; height:176px; min-width:100%; }
+.w2-ruler { position:absolute; inset:0 0 auto 0; height:26px; border-bottom:1px solid #ffffff12; }
+.w2-tick { position:absolute; top:14px; width:1px; height:12px; background:#ffffff26; font-size:10px; color:#8a97ab; }
+.w2-tick.is-major { top:6px; height:20px; background:#ffffff40; }
+.w2-tick.is-major::after { content:attr(data-label); }
+.w2-tick.is-major { padding-left:4px; line-height:12px; white-space:nowrap; }
+.w2-phrases { position:absolute; inset:36px 0 auto 0; height:22px; }
+.w2-words { position:absolute; inset:66px 0 auto 0; height:84px; }
+.w2-word { position:absolute; top:0; height:78px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:3px;
+  border:1.5px solid #8acf00; border-radius:10px; background:linear-gradient(180deg,#8acf0030,#8acf0016); color:#f2f7ff; cursor:grab; overflow:hidden; touch-action:none; user-select:none; }
+.w2-word.is-estimated { border-style:dashed; border-color:#8a97ab; background:linear-gradient(180deg,#8a97ab26,#8a97ab10); }
+.w2-word.is-selected { box-shadow:0 0 0 2px #fff, 0 6px 20px #8acf0050; z-index:3; }
+.w2-word.is-current { background:#8acf0060; }
+.w2-word.is-dragging { cursor:grabbing; opacity:.92; z-index:4; }
+.w2-word:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+.w2-text { max-width:100%; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; font-size:13px; }
+.w2-time { font:600 10px/1 ui-monospace,monospace; color:#b8e966; }
+.w2-handle { position:absolute; top:0; bottom:0; width:10px; cursor:ew-resize; }
+.w2-handle::after { content:""; position:absolute; top:22%; bottom:22%; left:4px; width:2px; border-radius:2px; background:#ffffff66; }
+.w2-handle-start { left:0; } .w2-handle-end { right:0; }
+.w2-playhead { position:absolute; top:0; bottom:0; width:2px; margin-left:-1px; background:#ff4d6d; pointer-events:none; z-index:6; box-shadow:0 0 8px #ff4d6d99; }
+.w2-phrase { position:absolute; height:16px; border-bottom:2px solid #7c8cff80; color:#9aa8ff; font-size:10px; line-height:14px; white-space:nowrap; overflow:hidden; }
+.w2-inspector { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px 18px; padding:12px; border:1px solid #ffffff14; border-radius:12px; background:#ffffff08; }
+.w2-selected { display:flex; flex-direction:column; gap:3px; min-width:90px; }
+.w2-selected strong { color:#fff; font-size:16px; }
+.w2-field { display:flex; flex-direction:column; gap:4px; color:#a9b5c8; font-size:11px; }
+.w2-field input { width:92px; padding:7px 8px; border:1px solid #ffffff26; border-radius:8px; background:#0b0f16; color:#fff; font:600 13px ui-monospace,monospace; }
+.w2-hint { margin:0; color:#8a97ab; font-size:11.5px; line-height:1.6; }
+.w2-legend { margin-left:12px; white-space:nowrap; }
+.w2-swatch { display:inline-block; width:14px; height:9px; margin-right:5px; border:1.5px solid #8acf00; border-radius:3px; background:#8acf0030; vertical-align:middle; }
+.w2-swatch.is-estimated { border-style:dashed; border-color:#8a97ab; background:#8a97ab26; }
+.w2-empty { padding:20px; color:#64748b; }
+@media (max-width:700px) { .w2-toolbar { gap:10px; } .w2-field input { width:80px; } }

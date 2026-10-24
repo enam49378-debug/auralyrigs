@@ -12,7 +12,7 @@ const chrome=process.env.AURALYRICS_CHROME || 'C:\\Program Files\\Google\\Chrome
 for(const width of [1920,1366,780,390])test(`Studio preview, inspector and drafts at ${width}px`,{skip:!fs.existsSync(chrome)},async t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'auralyrics-studio-'));
   t.after(()=>{assert.equal(path.dirname(path.resolve(dir)),path.resolve(os.tmpdir()));assert.ok(path.basename(dir).startsWith('auralyrics-studio-'));fs.rmSync(dir,{recursive:true,force:true,maxRetries:3,retryDelay:100});});
-  const instrumented=read('studio.js').replace(/\}\)\(\);\s*$/,`window.__studio={state,openTrackInEditor,getCleanTrackPayload,seekTo,renderStep3Effects,saveCurrentTrackToDatabase,triggerStageBeatHit};})();`);
+  const instrumented=read('studio.js').replace(/\}\)\(\);\s*$/,`window.__studio={state,openTrackInEditor,getCleanTrackPayload,seekTo,renderStep3Effects,saveCurrentTrackToDatabase,triggerStageBeatHit,computeWordEdit};})();`);
   let html=read('index.html').replace(/<link[^>]+>/g,'').replace(/<script[^>]+src=[^>]+><\/script>/g,'');
   html=html.replace('</head>',`<style>${read('studio.css')}\n${read('editor-layout.css')}</style></head>`);
   html=html.replace('</body>',`<pre id="result" hidden></pre><script>
@@ -73,6 +73,15 @@ for(const width of [1920,1366,780,390])test(`Studio preview, inspector and draft
     const slow=api.openTrackInEditor({title:'Otra',artist:'Otro',videoId:'slow',fileName:'slow.json'},3);
     await Promise.resolve();await api.openTrackInEditor(draft,3);resolveSlow();await slow;
     check('late track load never replaces the current song',api.state.currentTrack.videoId==='test-video');
+    const base=[{start:1,end:1.4},{start:1.5,end:1.9},{start:2,end:2.4}];
+    const pushed=api.computeWordEdit(base,0,'move',.6,'push',{min:0});
+    check('pushing a word moves neighbours without overlap',pushed[1].start>=pushed[0].end&&pushed[2].start>=pushed[1].end&&pushed[0].start===1.6);
+    const solo=api.computeWordEdit(base,0,'move',.6,'solo',{min:0});
+    check('solo mode never crosses the next word',solo[0].end<=base[1].start&&solo[1].start===1.5);
+    const ripple=api.computeWordEdit(base,1,'move',.3,'ripple',{min:0});
+    check('ripple moves every following word together',Math.abs(ripple[2].start-2.3)<1e-9&&ripple[0].start===1);
+    const back=api.computeWordEdit(base,1,'move',-.8,'push',{min:0});
+    check('pushing backwards respects the lower bound',back[0].start>=0&&back[1].start>=back[0].end);
     api.seekTo(2.5);document.getElementById('btn-expand-preview').click();await wait(100);
     const expanded=stage.getBoundingClientRect();check('expanded stage fills the window',expanded.width>=innerWidth-70&&expanded.height>=innerHeight-140);
     check('expanded text refits instead of keeping its small font',parseInt(stage.querySelector('.cinema-brat-text').style.fontSize)>0);
