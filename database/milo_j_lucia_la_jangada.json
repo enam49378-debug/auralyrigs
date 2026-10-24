@@ -1,0 +1,196 @@
+{
+  "found": true,
+  "track": {
+    "title": "Lucia (La Jangada)",
+    "artist": "Milo J",
+    "videoId": "4byO3z6mORs",
+    "duration": 194,
+    "lines": [],
+    "humanReviewed": false,
+    "effects": {
+      "theme": "brat",
+      "palette": "lime",
+      "bassBeats": [
+        0.11,
+        4.6,
+        7.93,
+        8.5,
+        9.1,
+        9.7,
+        20.72,
+        50.89,
+        66.15,
+        70.74,
+        75.11,
+        79.13,
+        83.46,
+        88.05,
+        88.74,
+        109.05,
+        127.09,
+        142.98,
+        147.37,
+        151.42,
+        155.62,
+        159.87,
+        164.36,
+        189.94
+      ],
+      "kineticSpeed": 1.15,
+      "keyframes": [
+        {
+          "time": 0,
+          "palette": "lime",
+          "layout": "impact",
+          "variant": "plain",
+          "entry": "stamp",
+          "shake": true
+        },
+        {
+          "time": 7.93,
+          "palette": "white",
+          "layout": "impact",
+          "variant": "plain",
+          "entry": "stamp",
+          "shake": true
+        },
+        {
+          "time": 10.35,
+          "palette": "ink",
+          "layout": "center",
+          "variant": "lean",
+          "entry": "rise",
+          "shake": false
+        },
+        {
+          "time": 20.72,
+          "palette": "blue",
+          "layout": "spread",
+          "variant": "plain",
+          "entry": "slide",
+          "shake": true
+        },
+        {
+          "time": 32.64,
+          "palette": "ink",
+          "layout": "center",
+          "variant": "lean",
+          "entry": "rise",
+          "shake": false
+        },
+        {
+          "time": 41.04,
+          "palette": "white",
+          "layout": "center",
+          "variant": "plain",
+          "entry": "rise",
+          "shake": false
+        },
+        {
+          "time": 50.89,
+          "palette": "yellow",
+          "layout": "spread",
+          "variant": "wide",
+          "entry": "slide",
+          "shake": true
+        },
+        {
+          "time": 66.15,
+          "palette": "red",
+          "layout": "impact",
+          "variant": "plain",
+          "entry": "stamp",
+          "shake": true
+        },
+        {
+          "time": 79.13,
+          "palette": "white",
+          "layout": "spread",
+          "variant": "plain",
+          "entry": "stamp",
+          "shake": true
+        },
+        {
+          "time": 88.05,
+          "palette": "lime",
+          "layout": "impact",
+          "variant": "plain",
+          "entry": "stamp",
+          "shake": true
+        },
+        {
+          "time": 109.05,
+          "palette": "ink",
+          "layout": "center",
+          "variant": "lean",
+          "entry": "rise",
+          "shake": false
+        },
+        {
+          "time": 117.16,
+          "palette": "white",
+          "layout": "center",
+          "variant": "lean",
+          "entry": "rise",
+          "shake": false
+        },
+        {
+          "time": 121.6,
+          "palette": "blue",
+          "layout": "spread",
+          "variant": "plain",
+          "entry": "slide",
+          "shake": true
+        },
+        {
+          "time": 127.09,
+          "palette": "yellow",
+          "layout": "spread",
+          "variant": "wide",
+          "entry": "slide",
+          "shake": true
+        },
+        {
+          "time": 142.98,
+          "palette": "red",
+          "layout": "impact",
+          "variant": "plain",
+          "entry": "stamp",
+          "shake": true
+        },
+        {
+          "time": 155.62,
+          "palette": "white",
+          "layout": "spread",
+          "variant": "plain",
+          "entry": "stamp",
+          "shake": true
+        },
+        {
+          "time": 164.36,
+          "palette": "lime",
+          "layout": "impact",
+          "variant": "plain",
+          "entry": "stamp",
+          "shake": true
+        },
+        {
+          "time": 168.64,
+          "palette": "ink",
+          "layout": "center",
+          "variant": "lean",
+          "entry": "rise",
+          "shake": false
+        },
+        {
+          "time": 189.94,
+          "palette": "lime",
+          "layout": "impact",
+          "variant": "plain",
+          "entry": "stamp",
+          "shake": true
+        }
+      ]
+    }
+  }
+}

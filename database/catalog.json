@@ -1,6 +1,16 @@
 {
-  "updatedAt": "2026-10-17T13:20:00Z",
+  "updatedAt": "2026-10-24T18:59:45.436Z",
   "tracks": [
+    {
+      "fileName": "milo_j_lucia_la_jangada.json",
+      "title": "Lucia (La Jangada)",
+      "artist": "Milo J",
+      "videoId": "4byO3z6mORs",
+      "duration": 194,
+      "linesCount": 0,
+      "hasBratEffects": true,
+      "humanReviewed": false
+    },
     {
       "fileName": "milo_j_te_fui_a_seguir.json",
       "title": "TE FUI A SEGUIR",
