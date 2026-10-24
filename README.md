@@ -93,3 +93,14 @@ auralyrics/
 Ejecuta `npm test`. Las pruebas de navegador usan Chrome local y Node.js 22 o posterior, con respuestas de YouTube simuladas; no reproducen ni publican música. Puedes configurar `AURALYRICS_CHROME` para indicar otro ejecutable.
 
 Los keyframes quedan guardados en el proyecto y el JSON. Su aplicación en AuraMusic depende de que la versión instalada de la extensión consuma esos campos; este editor no actualiza automáticamente el motor de la extensión.
+
+## Precisión con audio real
+
+`tools/analyze-audio.cjs` ajusta los tiempos con un archivo de audio que tengas en tu PC (requiere ffmpeg). Detecta los ataques reales de voz e instrumentos, mueve cada palabra al ataque más cercano (±0,12 s, sin romper el orden) y coloca los golpes de bajo 808.
+
+```bash
+node tools/analyze-audio.cjs cancion.mp3 database/artista_cancion.json          # vista previa
+node tools/analyze-audio.cjs cancion.mp3 database/artista_cancion.json --write  # guarda
+```
+
+Opciones: `--beats-only`, `--words-only`, `--window 0.12`. La ficha debe tener la letra guardada. Sin ese audio, los tiempos siguen siendo estimaciones.
