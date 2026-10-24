@@ -61,3 +61,5 @@ body.preview-expanded { overflow:hidden; }
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { animation:none!important; transition:none!important; }
 }
+/* El trazo solo existe en la escena "Trazo"; en cualquier otra queda oculto aunque llegue CSS viejo en caché. */
+.cinema-brat-stage:not([data-layout="scribble"]) .cinema-brat-scribble { display:none; }
